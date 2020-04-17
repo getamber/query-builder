@@ -2,7 +2,7 @@
 
 namespace Amber\Components\QueryBuilder;
 
-class LimitBuilder extends QueryClause
+class LimitBuilder
 {
     protected $limit;
     protected $offset;
@@ -17,7 +17,7 @@ class LimitBuilder extends QueryClause
         $this->offset = $offset;
     }
 
-    public function getSQL(): string
+    public function __toString()
     {
         $query = [];
 

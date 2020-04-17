@@ -2,7 +2,7 @@
 
 namespace Amber\Components\QueryBuilder;
 
-class JoinBuilder extends QueryClause
+class JoinBuilder
 {
     const INNER_JOIN = 'JOIN';
     const LEFT_JOIN = 'LEFT JOIN';
@@ -23,7 +23,7 @@ class JoinBuilder extends QueryClause
         $this->joins[] = $join;
     }
 
-    public function getSQL(): string
+    public function __toString()
     {
         return join(' ', $this->joins);
     }

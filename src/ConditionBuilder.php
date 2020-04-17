@@ -4,7 +4,7 @@ namespace Amber\Components\QueryBuilder;
 
 use Closure;
 
-class ConditionBuilder extends QueryClause
+class ConditionBuilder
 {
     const AND = 'AND';
     const OR = 'OR';
@@ -25,7 +25,7 @@ class ConditionBuilder extends QueryClause
         return (bool) $this->conditions;
     }
 
-    public function getSQL(): string
+    public function __toString()
     {
         return join(' ', $this->conditions);
     }
