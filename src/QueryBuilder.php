@@ -69,65 +69,60 @@ class QueryBuilder
     {
         if ($from instanceof Closure) {
             $query = new static($from);
-            $from = '('.$query.')';
+            $from = '('.$query.') '.$query->alias;
         }
 
         $this->from = trim($from.' '.$alias);
         return $this;
     }
 
-    public function join($table, string $alias, $condition): self
+    protected function addJoin($table, string $alias, $condition, $type)
     {
         if ($table instanceof Closure) {
             $query = new QueryBuilder($table);
             $table = '('.$query.')';
         }
 
-        $this->join->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
+        $this->join->addJoin($table, $alias, $condition, $type);
+    }
+
+    public function join($table, string $alias, $condition): self
+    {
+        $this->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
         return $this;
     }
 
     public function leftJoin($table, string $alias, $condition): self
     {
-        if ($table instanceof Closure) {
-            $query = new QueryBuilder($table);
-            $table = '('.$query.')';
-        }
-        
-        $this->join->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
+        $this->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
         return $this;
     }
 
     public function rightJoin($table, string $alias, $condition): self
     {
-        if ($table instanceof Closure) {
-            $query = new QueryBuilder($table);
-            $table = '('.$query.')';
-        }
-
-        $this->join->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
+        $this->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
         return $this;
     }
 
     public function crossJoin($table, string $alias): self
     {
-        if ($table instanceof Closure) {
-            $query = new QueryBuilder($table);
-            $table = '('.$query.')';
-        }
-        
-        $this->join->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
+        $this->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
         return $this;
     }
 
-    public function where($condition): self
+    protected function addWhere($condition, $operator)
     {
         if ($condition instanceof Closure) {
             $query = new static($condition);
             $condition = '('.$query.')';
         }
 
-        $this->where->addCondition($condition, ConditionBuilder::AND);
+        $this->where->addCondition($condition, $operator);
+    }
+
+    public function where($condition): self
+    {
+        $this->addWhere($condition, ConditionBuilder::AND);
         return $this;
     }
 
@@ -138,12 +133,7 @@ class QueryBuilder
 
     public function orWhere($condition): self
     {
-        if ($condition instanceof Closure) {
-            $query = new static($condition);
-            $condition = '('.$query.')';
-        }
-
-        $this->where->addCondition($condition, ConditionBuilder::OR);
+        $this->addWhere($condition, ConditionBuilder::OR);
         return $this;
     }
 
@@ -160,14 +150,19 @@ class QueryBuilder
         return $this;
     }
 
-    public function having($condition): self
+    protected function addHaving($condition, $operator)
     {
         if ($condition instanceof Closure) {
             $query = new static($condition);
             $condition = '('.$query.')';
         }
 
-        $this->having->addCondition($condition, ConditionBuilder::AND);
+        $this->having->addCondition($condition, $operator);
+    }
+
+    public function having($condition): self
+    {
+        $this->addHaving($condition, ConditionBuilder::AND);
         return $this;
     }
 
@@ -178,12 +173,7 @@ class QueryBuilder
 
     public function orHaving($condition): self
     {
-        if ($condition instanceof Closure) {
-            $query = new static($condition);
-            $condition = '('.$query.')';
-        }
-
-        $this->having->addCondition($condition, ConditionBuilder::OR);
+        $this->addHaving($condition, ConditionBuilder::OR);
         return $this;
     }
 
