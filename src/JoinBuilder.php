@@ -10,7 +10,6 @@ class JoinBuilder extends QueryClause
     const CROSS_JOIN = 'CROSS JOIN';
 
     protected $joins = [];
-    protected $hasJoins = false;
 
     public function addJoin($table, $alias, $condition = null, $type = JoinBuilder::INNER_JOIN)
     {
@@ -22,12 +21,6 @@ class JoinBuilder extends QueryClause
         }
 
         $this->joins[] = $join;
-        $this->hasJoins = true;
-    }
-
-    public function hasJoins()
-    {
-        return $this->hasJoins;
     }
 
     public function getSQL(): string

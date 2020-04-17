@@ -5,6 +5,12 @@ use PHPUnit\Framework\TestCase;
 
 class JoinBuilderTest extends TestCase
 {
+    public function testEmptyJoin()
+    {
+        $join = new JoinBuilder();
+        $this->assertEquals('', (string) $join);
+    }
+
     public function testInnerJoin()
     {
         $join = new JoinBuilder();

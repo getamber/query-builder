@@ -1,14 +1,14 @@
 <?php
 
-use Amber\Components\QueryBuilder\InsertBuilder;
+use Amber\Components\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
-class InsertBuilderTest extends TestCase
+class InsertQueryTest extends TestCase
 {
     public function testInsert()
     {
-        $insert = new InsertBuilder();
-        $insert->table('users')
+        $insert = new QueryBuilder();
+        $insert->insert('users')
             ->values([
                 'username' => '?',
                 'forename' => '?',

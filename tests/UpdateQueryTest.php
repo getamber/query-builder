@@ -1,14 +1,14 @@
 <?php
 
-use Amber\Components\QueryBuilder\UpdateBuilder;
+use Amber\Components\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
-class UpdateBuilderTest extends TestCase
+class UpdateQueryTest extends TestCase
 {
     public function testUpdate()
     {
-        $update = new UpdateBuilder();
-        $update->table('users')
+        $update = new QueryBuilder();
+        $update->update('users')
             ->values([
                 'forename' => '?',
                 'surname' => '?',

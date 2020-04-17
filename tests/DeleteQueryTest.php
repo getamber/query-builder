@@ -1,14 +1,14 @@
 <?php
 
-use Amber\Components\QueryBuilder\DeleteBuilder;
+use Amber\Components\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
-class DeleteBuilderTest extends TestCase
+class DeleteQueryTest extends TestCase
 {
     public function testDelete()
     {
-        $delete = new DeleteBuilder();
-        $delete->table('users')
+        $delete = new QueryBuilder();
+        $delete->delete('users')
             ->where('username = ?');
         $this->assertEquals('DELETE FROM users WHERE username = ?', (string) $delete);
     }
