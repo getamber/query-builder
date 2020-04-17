@@ -29,18 +29,30 @@ class QueryBuilder
     protected $table;
     protected $values = [];
 
-    public function __construct()
+    public function __construct(Closure $build = null)
     {
         $this->join = new JoinBuilder();
         $this->where = new ConditionBuilder();
         $this->having = new ConditionBuilder();
         $this->limit = new LimitBuilder();
+
+        if ($build) {
+            $build($this);
+        }
     }
 
     public function select($columns): self
     {
         $this->type = self::TYPE_SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
+        array_map(function ($column) {
+            if ($column instanceof closure) {
+                $query = new static($column);
+                return trim('('.$query.')');
+            } else {
+                return $column;
+            }
+        }, $columns);
         array_push($this->select, ...$columns);        
         return $this;
     }
@@ -54,8 +66,7 @@ class QueryBuilder
     public function from($from, string $alias = null): self
     {
         if ($from instanceof Closure) {
-            $query = new static();
-            $from($query);
+            $query = new static($from);
             $from = '('.$query.')';
         }
 
@@ -90,8 +101,7 @@ class QueryBuilder
     public function where($condition): self
     {
         if ($condition instanceof Closure) {
-            $query = new static();
-            $condition($query);
+            $query = new static($condition);
             $condition = '('.$query.')';
         }
 
@@ -107,8 +117,7 @@ class QueryBuilder
     public function orWhere($condition): self
     {
         if ($condition instanceof Closure) {
-            $query = new static();
-            $condition($query);
+            $query = new static($condition);
             $condition = '('.$query.')';
         }
 
@@ -132,8 +141,7 @@ class QueryBuilder
     public function having($condition): self
     {
         if ($condition instanceof Closure) {
-            $query = new static();
-            $condition($query);
+            $query = new static($condition);
             $condition = '('.$query.')';
         }
 
@@ -149,8 +157,7 @@ class QueryBuilder
     public function orHaving($condition): self
     {
         if ($condition instanceof Closure) {
-            $query = new static();
-            $condition($query);
+            $query = new static($condition);
             $condition = '('.$query.')';
         }
 
