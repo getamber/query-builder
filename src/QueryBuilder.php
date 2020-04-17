@@ -29,6 +29,8 @@ class QueryBuilder
     protected $table;
     protected $values = [];
 
+    protected $alias;
+
     public function __construct(Closure $build = null)
     {
         $this->join = new JoinBuilder();
@@ -37,7 +39,7 @@ class QueryBuilder
         $this->limit = new LimitBuilder();
 
         if ($build) {
-            $build($this);
+            $this->alias = $build($this);
         }
     }
 
@@ -45,10 +47,10 @@ class QueryBuilder
     {
         $this->type = self::TYPE_SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
-        array_map(function ($column) {
-            if ($column instanceof closure) {
+        $columns = array_map(function ($column) {
+            if ($column instanceof Closure) {
                 $query = new static($column);
-                return trim('('.$query.')');
+                return trim('('.$query.') '.$query->alias);
             } else {
                 return $column;
             }
@@ -76,24 +78,44 @@ class QueryBuilder
 
     public function join($table, string $alias, $condition): self
     {
+        if ($table instanceof Closure) {
+            $query = new QueryBuilder($table);
+            $table = '('.$query.')';
+        }
+
         $this->join->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
         return $this;
     }
 
     public function leftJoin($table, string $alias, $condition): self
     {
+        if ($table instanceof Closure) {
+            $query = new QueryBuilder($table);
+            $table = '('.$query.')';
+        }
+        
         $this->join->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
         return $this;
     }
 
     public function rightJoin($table, string $alias, $condition): self
     {
+        if ($table instanceof Closure) {
+            $query = new QueryBuilder($table);
+            $table = '('.$query.')';
+        }
+
         $this->join->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
         return $this;
     }
 
     public function crossJoin($table, string $alias): self
     {
+        if ($table instanceof Closure) {
+            $query = new QueryBuilder($table);
+            $table = '('.$query.')';
+        }
+        
         $this->join->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
         return $this;
     }
