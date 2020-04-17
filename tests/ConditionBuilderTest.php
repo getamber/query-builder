@@ -14,14 +14,14 @@ class ConditionBuilderTest extends TestCase
     public function testSingleCondition()
     {
         $condition = new ConditionBuilder();
-        $condition->addCondition('u.id = ?');
+        $condition->addCondition('u.id = ?', null);
         $this->assertEquals('u.id = ?', (string) $condition);
     }
 
     public function testMultipleConditions()
     {
         $condition = new ConditionBuilder();
-        $condition->addCondition('u.id = ?');
+        $condition->addCondition('u.id = ?', null);
         $condition->addCondition('u.username = ?', ConditionBuilder::OR);
         $condition->addCondition('u.email = ?', ConditionBuilder::AND);
         $this->assertEquals('u.id = ? OR u.username = ? AND u.email = ?', (string) $condition);

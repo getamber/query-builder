@@ -5,13 +5,13 @@ namespace Amber\Components\QueryBuilder;
 class JoinBuilder
 {
     const INNER_JOIN = 'JOIN';
-    const LEFT_JOIN = 'LEFT JOIN';
+    const LEFT_JOIN  = 'LEFT JOIN';
     const RIGHT_JOIN = 'RIGHT JOIN';
     const CROSS_JOIN = 'CROSS JOIN';
 
     protected $joins = [];
 
-    public function addJoin($table, $alias, $condition = null, $type = JoinBuilder::INNER_JOIN)
+    public function addJoin($table, $alias, $condition, $type)
     {
         $table = trim($table.' '.$alias);
         $join = $type.' '.$table;

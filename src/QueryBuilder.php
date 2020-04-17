@@ -11,14 +11,6 @@ class QueryBuilder
     const TYPE_UPDATE = 'UPDATE';
     const TYPE_DELETE = 'DELETE';
 
-    const OPERATION_AND = ConditionBuilder::AND;
-    const OPERATION_OR  = ConditionBuilder::OR;
-
-    const JOIN_INNER = JoinBuilder::INNER_JOIN;
-    const JOIN_LEFT  = JoinBuilder::LEFT_JOIN;
-    const JOIN_RIGHT = JoinBuilder::RIGHT_JOIN;
-    const JOIN_CROSS = JoinBuilder::CROSS_JOIN;
-
     const SORT_ASC = 'ASC';
     const SORT_DESC = 'DESC';
 
@@ -87,7 +79,7 @@ class QueryBuilder
     protected function addJoin($table, string $alias, $condition, $type)
     {
         if ($table instanceof Closure) {
-            $query = new QueryBuilder($table);
+            $query = new static($table);
             $table = '('.$query.')';
         }
 
@@ -96,25 +88,25 @@ class QueryBuilder
 
     public function join($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_INNER);
+        $this->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
         return $this;
     }
 
     public function leftJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_LEFT);
+        $this->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
         return $this;
     }
 
     public function rightJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_RIGHT);
+        $this->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
         return $this;
     }
 
     public function crossJoin($table, string $alias): self
     {
-        $this->addJoin($table, $alias, null, QueryBuilder::JOIN_CROSS);
+        $this->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
         return $this;
     }
 
@@ -130,22 +122,65 @@ class QueryBuilder
 
     public function where($condition): self
     {
-        $this->addWhere($condition, QueryBuilder::OPERATION_AND);
+        $this->addWhere($condition, null);
         return $this;
     }
 
     public function andWhere($condition): self
     {
-        return $this->where($condition);
+        $this->addWhere($condition, ConditionBuilder::AND);
+        return $this;
     }
 
     public function orWhere($condition): self
     {
-        $this->addWhere($condition, QueryBuilder::OPERATION_OR);
+        $this->addWhere($condition, ConditionBuilder::OR);
         return $this;
     }
 
-    public function order(string $column, string $sort = QueryBuilder::SORT_ASC): self
+    protected function addExists(Closure $builder, $operator)
+    {
+        $query = new static($builder);
+        $this->addWhere('EXISTS ('.$query.')', $operator);
+    }
+
+    public function whereExists(Closure $builder): self
+    {
+        $this->addExists($builder, null);
+        return $this;
+    }
+
+    public function andWhereExists(Closure $builder)
+    {
+        $this->addExists($builder, ConditionBuilder::AND);
+        return $this;
+    }
+
+    public function orWhereExists(Closure $builder)
+    {
+        $this->addExists($builder, ConditionBuilder::OR);
+        return $this;
+    }
+
+    public function whereNotExists(Closure $builder): self
+    {
+        $this->addExists($builder, 'NOT');
+        return $this;
+    }
+
+    public function andWhereNotExists(Closure $builder)
+    {
+        $this->addExists($builder, 'AND NOT');
+        return $this;
+    }
+
+    public function orWhereNotExists(Closure $builder)
+    {
+        $this->addExists($builder, 'OR NOT');
+        return $this;
+    }
+
+    public function order(string $column, string $sort = self::SORT_ASC): self
     {
         $this->orderBy[] = $column.' '.$sort;
         return $this;
@@ -170,18 +205,19 @@ class QueryBuilder
 
     public function having($condition): self
     {
-        $this->addHaving($condition, QueryBuilder::OPERATION_AND);
+        $this->addHaving($condition, null);
         return $this;
     }
 
     public function andHaving($condition): self
     {
-        return $this->having($condition);
+        $this->addHaving($condition, ConditionBuilder::AND);
+        return $this;
     }
 
     public function orHaving($condition): self
     {
-        $this->addHaving($condition, QueryBuilder::OPERATION_OR);
+        $this->addHaving($condition, ConditionBuilder::OR);
         return $this;
     }
 

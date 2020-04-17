@@ -7,15 +7,14 @@ use Closure;
 class ConditionBuilder
 {
     const AND = 'AND';
-    const OR = 'OR';
+    const OR  = 'OR';
 
     protected $conditions = [];
     protected $operator;
     protected $hasConditions = false;
 
-    public function addCondition($condition, $operator = ConditionBuilder::AND)
+    public function addCondition($condition, $operator)
     {
-        $operator = $this->hasConditions ? $operator : '';
         $this->conditions[] = trim($operator.' '.$condition);
         $this->hasConditions = true;
     }
