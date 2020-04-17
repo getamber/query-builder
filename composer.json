@@ -1,0 +1,17 @@
+{
+    "name": "getamber/query-builder",
+    "description": "Simple SQL query builder for Amber static site builder.",
+    "license": "MIT",
+    "authors": [
+        {"name": "Ken Lynch"}
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^9.1",
+        "fzaninotto/faker": "^1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "Amber\\Components\\QueryBuilder\\": "src"
+        }
+    }
+}
