@@ -11,6 +11,14 @@ class QueryBuilder
     const TYPE_UPDATE = 'UPDATE';
     const TYPE_DELETE = 'DELETE';
 
+    const OPERATION_AND = ConditionBuilder::AND;
+    const OPERATION_OR  = ConditionBuilder::OR;
+
+    const JOIN_INNER = JoinBuilder::INNER_JOIN;
+    const JOIN_LEFT  = JoinBuilder::LEFT_JOIN;
+    const JOIN_RIGHT = JoinBuilder::RIGHT_JOIN;
+    const JOIN_CROSS = JoinBuilder::CROSS_JOIN;
+
     const SORT_ASC = 'ASC';
     const SORT_DESC = 'DESC';
 
@@ -88,25 +96,25 @@ class QueryBuilder
 
     public function join($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
+        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_INNER);
         return $this;
     }
 
     public function leftJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
+        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_LEFT);
         return $this;
     }
 
     public function rightJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
+        $this->addJoin($table, $alias, $condition, QueryBuilder::JOIN_RIGHT);
         return $this;
     }
 
     public function crossJoin($table, string $alias): self
     {
-        $this->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
+        $this->addJoin($table, $alias, null, QueryBuilder::JOIN_CROSS);
         return $this;
     }
 
@@ -122,7 +130,7 @@ class QueryBuilder
 
     public function where($condition): self
     {
-        $this->addWhere($condition, ConditionBuilder::AND);
+        $this->addWhere($condition, QueryBuilder::OPERATION_AND);
         return $this;
     }
 
@@ -133,7 +141,7 @@ class QueryBuilder
 
     public function orWhere($condition): self
     {
-        $this->addWhere($condition, ConditionBuilder::OR);
+        $this->addWhere($condition, QueryBuilder::OPERATION_OR);
         return $this;
     }
 
@@ -162,7 +170,7 @@ class QueryBuilder
 
     public function having($condition): self
     {
-        $this->addHaving($condition, ConditionBuilder::AND);
+        $this->addHaving($condition, QueryBuilder::OPERATION_AND);
         return $this;
     }
 
@@ -173,7 +181,7 @@ class QueryBuilder
 
     public function orHaving($condition): self
     {
-        $this->addHaving($condition, ConditionBuilder::OR);
+        $this->addHaving($condition, QueryBuilder::OPERATION_OR);
         return $this;
     }
 
