@@ -10,94 +10,82 @@ namespace Amber\Components\QueryBuilder;
  */
 class QueryCompiler
 {
-    protected $query;
-
-    public static function create(Query $query)
+    public function getSQL(Query $query): string
     {
-        return new static($query);
-    }
-
-    public function __construct(Query $query)
-    {
-        $this->query = $query;
-    }
-
-    public function getSQL(): string
-    {
-        switch ($this->query->type) {
+        switch ($query->type) {
             case Query::SELECT:
-                return $this->getSQLForSelect();
+                return $this->getSQLForSelect($query);
 
             case Query::INSERT:
-                return $this->getSQLForInsert();
+                return $this->getSQLForInsert($query);
         
             case Query::UPDATE:
-                return $this->getSQLForUpdate();
+                return $this->getSQLForUpdate($query);
 
             case Query::DELETE:
-                return $this->getSQLForDelete();
+                return $this->getSQLForDelete($query);
             
             default:
-                return $this->getSQLForConditions($this->query->where);
+                return $this->getSQLForConditions($query->where);
         }
     }
 
-    protected function getSQLForSelect(): string
+    protected function getSQLForSelect($query): string
     {
         $sql = ['SELECT'];
 
-        if ($this->query->distinct) {
+        if ($query->distinct) {
             $sql[] = 'DISTINCT';
         }
 
-        $sql[] = join(',', $this->query->select);
+        $sql[] = join(',', $query->select);
         
-        if ($this->query->from) {
-            $sql[] = 'FROM '.$this->query->from;
+        if ($query->from) {
+            $sql[] = 'FROM '.$query->from;
         }
 
-        $sql[] = $this->getSQLForJoins();
-        $sql[] = $this->getSQLForWhereClause();
-        $sql[] = $this->getSQLForGroupByClause();
-        $sql[] = $this->getSQLForOrderByClause();
-        $sql[] = $this->getSQLForLimitClause();
+        $sql[] = $this->getSQLForJoins($query->join);
+        $sql[] = $this->getSQLForWhereClause($query->where);
+        $sql[] = $this->getSQLForGroupByClause($query->groupBy, $query->having);
+        $sql[] = $this->getSQLForOrderByClause($query->orderBy);
+        $sql[] = $this->getSQLForLimitClause($query->limit, $query->offset);
 
         return join(' ', array_filter($sql));
     }
 
-    protected function getSQLForInsert(): string
+    protected function getSQLForInsert(Query $query): string
     {
         return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $this->query->from,
-            join(',', array_keys($this->query->values)),
-            join(',', $this->query->values)
+            $query->from,
+            join(',', array_keys($query->values)),
+            join(',', $query->values)
         );
     }
 
-    protected function getSQLForUpdate(): string
+    protected function getSQLForUpdate(Query $query): string
     {
         return sprintf('UPDATE %s SET %s %s',
-            $this->query->from,
+            $query->from,
             join(',', array_map(function ($column, $value) {
                 return $column.'='.$value;
-            }, array_keys($this->query->values), $this->query->values)),
-            $this->getSQLForWhereClause()
+            }, array_keys($query->values), $query->values)),
+            $this->getSQLForWhereClause($query->where)
         );
     }
 
-    protected function getSQLForDelete(): string
+    protected function getSQLForDelete(Query $query): string
     {
         return sprintf('DELETE FROM %s %s',
-            $this->query->from,
-            $this->getSQLForWhereClause()
+            $query->from,
+            $this->getSQLForWhereClause($query->where)
         );
     }
 
-    protected function getSQLForJoins(): string
+    protected function getSQLForJoins($joins): string
     {
         return join(' ', array_map(function ($join) {
             return $this->getSQLForJoin(...$join);
-        }, $this->query->join));
+        }, $joins));
     }
 
     protected function getSQLForJoin($table, $condition, $type): string
@@ -111,13 +99,13 @@ class QueryCompiler
         return $join;
     }
 
-    protected function getSQLForWhereClause(): string
+    protected function getSQLForWhereClause($where): string
     {
-        if (!$this->query->where) {
+        if (!$where) {
             return '';
         }
 
-        return 'WHERE '.$this->getSQLForConditions($this->query->where);
+        return 'WHERE '.$this->getSQLForConditions($where);
     }
 
     protected function getSQLForConditions(array $conditions): string
@@ -132,44 +120,44 @@ class QueryCompiler
         return trim($operator.' '.$condition);
     }
 
-    protected function getSQLForOrderByClause(): string
+    protected function getSQLForOrderByClause($orderBy): string
     {
-        if (!$this->query->orderBy) {
+        if (!$orderBy) {
             return '';
         }
 
         return 'ORDER BY '.join(',', array_map(function ($orderBy) {
             return $orderBy[0].' '.$orderBy[1];
-        }, $this->query->orderBy));
+        }, $orderBy));
     }
 
-    protected function getSQLForGroupByClause(): string
+    protected function getSQLForGroupByClause($groupBy, $having): string
     {
-        if (!$this->query->groupBy) {
+        if (!$groupBy) {
             return '';
         }
 
-        $sql = 'GROUP BY '.join(' ', $this->query->groupBy);
+        $sql = 'GROUP BY '.join(' ', $groupBy);
 
-        if ($this->query->having) {
-            $sql .= ' HAVING '.$this->getSQLForConditions($this->query->having);
+        if ($having) {
+            $sql .= ' HAVING '.$this->getSQLForConditions($having);
         }
 
         return $sql;
     }
 
-    protected function getSQLForLimitClause(): string
+    protected function getSQLForLimitClause($limit, $offset): string
     {
-        $query = [];
+        $sql = [];
 
-        if ($this->query->limit) {
-            $query[] = 'LIMIT '.$this->query->limit;
+        if ($limit) {
+            $sql[] = 'LIMIT '.$limit;
         }
 
-        if ($this->query->offset) {
-            $query[] = 'OFFSET '.$this->query->offset;
+        if ($offset > 0) {
+            $sql[] = 'OFFSET '.$offset;
         }
 
-        return join(' ', $query);
+        return join(' ', $sql);
     }
 }

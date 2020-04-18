@@ -26,7 +26,7 @@ class Query
     public $having   = [];
     public $orderBy  = [];
     public $limit    = null;
-    public $offset   = null;
+    public $offset   = 0;
     public $values   = [];
 
     /**

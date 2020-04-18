@@ -107,7 +107,7 @@ class SelectQueryTest extends TestCase
             $query->select('*')->from('users');
             return 'u1';
         });
-        $this->assertEquals('SELECT * FROM (SELECT * FROM users) u1', (string) $query);
+        $this->assertEquals('SELECT * FROM (SELECT * FROM users) AS u1', (string) $query);
     }
 
     public function testSelectWithSubqueryColumns()
@@ -120,6 +120,6 @@ class SelectQueryTest extends TestCase
             $query->select('MAX(created_at)')->from('table2');
             return 'maximum';
         })->from('table1 t1');
-        $this->assertEquals('SELECT (SELECT COUNT(id) FROM table2) total,(SELECT MAX(created_at) FROM table2) maximum FROM table1 t1', (string) $query);
+        $this->assertEquals('SELECT (SELECT COUNT(id) FROM table2) AS total,(SELECT MAX(created_at) FROM table2) AS maximum FROM table1 t1', (string) $query);
     }
 }
