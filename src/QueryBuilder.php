@@ -45,7 +45,13 @@ class QueryBuilder
 
     public function select($columns): self
     {
+        $this->select = [];
         $this->type = self::TYPE_SELECT;
+        return $this->addSelect(func_get_args());
+    }
+
+    public function addSelect($columns): self
+    {
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
             if ($column instanceof Closure) {
@@ -122,6 +128,7 @@ class QueryBuilder
 
     public function where($condition): self
     {
+        $this->where = new ConditionBuilder();
         $this->addWhere($condition, null);
         return $this;
     }
@@ -146,6 +153,7 @@ class QueryBuilder
 
     public function whereExists(Closure $builder): self
     {
+        $this->where = new ConditionBuilder();
         $this->addExists($builder, null);
         return $this;
     }
@@ -164,6 +172,7 @@ class QueryBuilder
 
     public function whereNotExists(Closure $builder): self
     {
+        $this->where = new ConditionBuilder();
         $this->addExists($builder, 'NOT');
         return $this;
     }
@@ -180,16 +189,27 @@ class QueryBuilder
         return $this;
     }
 
-    public function order(string $column, string $sort = self::SORT_ASC): self
+    public function orderBy(string $column, string $sort = self::SORT_ASC): self
+    {
+        $this->orderBy = [];
+        return $this->addOrderBy($column, $sort);
+    }
+
+    public function addOrderBy(string $column, string $sort = self::SORT_ASC): self
     {
         $this->orderBy[] = $column.' '.$sort;
         return $this;
     }
 
-    public function group($column): self
+    public function groupBy($column): self
     {
-        $column = is_array($column) ? $column : func_get_args();
-        array_push($this->groupBy, ...$column);
+        $this->groupBy = [];
+        return $this->addGroupBy($column);
+    }
+
+    public function addGroupBy($column): self
+    {
+        $this->groupBy[] = $column;
         return $this;
     }
 
@@ -205,6 +225,7 @@ class QueryBuilder
 
     public function having($condition): self
     {
+        $this->having = new ConditionBuilder();
         $this->addHaving($condition, null);
         return $this;
     }

@@ -26,6 +26,14 @@ class SelectQueryTest extends TestCase
         $this->assertEquals('SELECT column1,column2,column3 FROM table1 t1', (string) $query);
     }
 
+    public function testReplaceSelect()
+    {
+        $query = new QueryBuilder();
+        $query->select('column1', 'column2', 'column3')->from('table1', 't1');
+        $query->select('column_a', 'column_b', 'column_c');
+        $this->assertEquals('SELECT column_a,column_b,column_c FROM table1 t1', (string) $query);
+    }
+
     public function testSimpleSelectWithSingleWhere()
     {
         $query = new QueryBuilder();
@@ -72,14 +80,19 @@ class SelectQueryTest extends TestCase
     public function testSelectWithSingleOrderBy()
     {
         $query = new QueryBuilder();
-        $query->select('column1', 'column2', 'column3')->from('table1', 't1')->order('t1.sort', 'DESC');
+        $query->select('column1', 'column2', 'column3')
+            ->from('table1', 't1')
+            ->orderBy('t1.sort', 'DESC');
         $this->assertEquals('SELECT column1,column2,column3 FROM table1 t1 ORDER BY t1.sort DESC', (string) $query);
     }
 
     public function testSelectWithMultipleOrderBy()
     {
         $query = new QueryBuilder();
-        $query->select('column1', 'column2', 'column3')->from('table1', 't1')->order('t1.sort', 'DESC')->order('t1.surname', 'ASC');
+        $query->select('column1', 'column2', 'column3')
+            ->from('table1', 't1')
+            ->orderBy('t1.sort', 'DESC')
+            ->addOrderBy('t1.surname', 'ASC');
         $this->assertEquals('SELECT column1,column2,column3 FROM table1 t1 ORDER BY t1.sort DESC,t1.surname ASC', (string) $query);
     }
 
