@@ -2,6 +2,9 @@
 
 namespace Amber\Components\QueryBuilder;
 
+/**
+ * Compiles a query object into an SQL string.
+ */
 class QueryCompiler
 {
     protected $query;
@@ -112,8 +115,13 @@ class QueryCompiler
     protected function getSQLForConditions(array $conditions): string
     {
         return join(' ', array_map(function ($condition) {
-            return trim($condition[1].' '.$condition[0]);
+            return $this->getSQLForCondition(...$condition);
         }, $conditions));
+    }
+
+    protected function getSQLForCondition($condition, $operator)
+    {
+        return trim($operator.' '.$condition);
     }
 
     protected function getSQLForOrderByClause(): string

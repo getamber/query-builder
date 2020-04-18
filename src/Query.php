@@ -2,6 +2,9 @@
 
 namespace Amber\Components\QueryBuilder;
 
+/**
+ * Holds data about the query.
+ */
 class Query
 {
     const TYPE_SELECT = 'SELECT';
@@ -23,6 +26,9 @@ class Query
     public $offset   = null;
     public $values   = [];
 
+    /**
+     * Adds a select clause to the query.
+     */
     public function addSelect(array $columns, $append = true)
     {
         if (!$append) {
@@ -32,6 +38,9 @@ class Query
         array_push($this->select, ...$columns);
     }
 
+    /**
+     * Sets the from clause of the query.
+     */
     public function setFrom($table)
     {
         $this->from = $table;

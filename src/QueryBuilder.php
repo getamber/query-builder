@@ -113,8 +113,13 @@ class QueryBuilder
 
     public function where($condition): self
     {
-        $this->query->where = [];
         $this->addWhere($condition, null, false);
+        return $this;
+    }
+
+    public function whereNot($condition): self
+    {
+        $this->addWhere($condition, 'NOT', false);
         return $this;
     }
 
@@ -124,9 +129,21 @@ class QueryBuilder
         return $this;
     }
 
+    public function andWhereNot($condition): self
+    {
+        $this->addWhere($condition, 'AND NOT');
+        return $this;
+    }
+
     public function orWhere($condition): self
     {
         $this->addWhere($condition, 'OR');
+        return $this;
+    }
+
+    public function orWhereNot($condition): self
+    {
+        $this->addWhere($condition, 'OR NOT');
         return $this;
     }
 
@@ -143,18 +160,6 @@ class QueryBuilder
         return $this;
     }
 
-    public function andWhereExists(Closure $builder)
-    {
-        $this->addExists($builder, 'AND');
-        return $this;
-    }
-
-    public function orWhereExists(Closure $builder)
-    {
-        $this->addExists($builder, 'OR');
-        return $this;
-    }
-
     public function whereNotExists(Closure $builder): self
     {
         $this->query->where = [];
@@ -162,9 +167,21 @@ class QueryBuilder
         return $this;
     }
 
+    public function andWhereExists(Closure $builder)
+    {
+        $this->addExists($builder, 'AND');
+        return $this;
+    }
+
     public function andWhereNotExists(Closure $builder)
     {
         $this->addExists($builder, 'AND NOT');
+        return $this;
+    }
+
+    public function orWhereExists(Closure $builder)
+    {
+        $this->addExists($builder, 'OR');
         return $this;
     }
 
@@ -188,30 +205,35 @@ class QueryBuilder
 
     public function groupBy($column): self
     {
-        $this->query->groupBy = [];
-        return $this->addGroupBy($column);
+        $this->query->addGroupBy($column, false);
+        return $this;
     }
 
     public function addGroupBy($column): self
     {
-        $this->query->groupBy[] = $column;
+        $this->query->addGroupBy($column);
         return $this;
     }
 
-    protected function addHaving($condition, $operator)
+    protected function addHaving($condition, $operator, $append = true)
     {
         if ($condition instanceof Closure) {
             $query = new static($condition);
             $condition = '('.$query.')';
         }
 
-        $this->query->having[] = trim($operator.' '.$condition);
+        $this->query->addHaving($condition, $operator);
     }
 
     public function having($condition): self
     {
-        $this->query->having = [];
-        $this->addHaving($condition, null);
+        $this->addHaving($condition, null, false);
+        return $this;
+    }
+
+    public function notHaving($condition): self
+    {
+        $this->addHaving($condition, 'NOT', false);
         return $this;
     }
 
@@ -221,9 +243,21 @@ class QueryBuilder
         return $this;
     }
 
+    public function andNotHaving($condition): self
+    {
+        $this->addHaving($condition, 'AND NOT');
+        return $this;
+    }
+
     public function orHaving($condition): self
     {
         $this->addHaving($condition, 'OR');
+        return $this;
+    }
+
+    public function orNotHaving($condition): self
+    {
+        $this->addHaving($condition, 'OR NOT');
         return $this;
     }
 
