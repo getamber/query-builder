@@ -100,7 +100,7 @@ class SelectQueryTest extends TestCase
         $this->assertEquals('SELECT column1,column2,column3 FROM table1 t1 ORDER BY t1.sort DESC,t1.surname ASC', (string) $query);
     }
 
-    public function testSelectWithSubquery()
+    public function testSelectWithSubqueryFrom()
     {
         $query = new QueryBuilder();
         $query->select('*')->from(function ($query) {
@@ -116,7 +116,10 @@ class SelectQueryTest extends TestCase
         $query->select(function ($query) {
             $query->select('COUNT(id)')->from('table2');
             return 'total';
+        }, function ($query) {
+            $query->select('MAX(created_at)')->from('table2');
+            return 'maximum';
         })->from('table1 t1');
-        $this->assertEquals('SELECT (SELECT COUNT(id) FROM table2) total FROM table1 t1', $query);
+        $this->assertEquals('SELECT (SELECT COUNT(id) FROM table2) total,(SELECT MAX(created_at) FROM table2) maximum FROM table1 t1', (string) $query);
     }
 }

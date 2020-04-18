@@ -5,7 +5,7 @@ namespace Amber\Components\QueryBuilder;
 use Closure;
 
 /**
- * Fluent query builder.
+ * Fluent query builder for creating SQL queries.
  * 
  * @author  Ken Lynch
  * @license MIT
@@ -19,7 +19,13 @@ class QueryBuilder
     protected $compiler;
     protected $alias;
 
-    public function __construct(Closure $build = null, $compiler = QueryCompiler::class)
+    /**
+     * Initialises a new QueryBuilder
+     * 
+     * @param Closure $build
+     * @param string  $compiler
+     */
+    public function __construct(Closure $build = null, string $compiler = QueryCompiler::class)
     {
         $this->query    = new Query();
         $this->compiler = new $compiler($this->query);
@@ -29,10 +35,13 @@ class QueryBuilder
         }
     }
 
+    /**
+     * 
+     */
     public function select($columns): self
     {
         $this->query->select = [];
-        $this->query->type = Query::TYPE_SELECT;
+        $this->query->type = Query::SELECT;
         return $this->addSelect(func_get_args());
     }
 
@@ -281,7 +290,7 @@ class QueryBuilder
 
     public function insert(string $table, $values = [])
     {
-        $this->query->type = Query::TYPE_INSERT;
+        $this->query->type = Query::INSERT;
         $this->query->from = $table;
         $this->values($values);
         return $this;
@@ -289,7 +298,7 @@ class QueryBuilder
 
     public function update(string $table, $values = []): self
     {
-        $this->query->type = Query::TYPE_UPDATE;
+        $this->query->type = Query::UPDATE;
         $this->query->from = $table;
         $this->values($values);
         return $this;
@@ -303,7 +312,7 @@ class QueryBuilder
 
     public function delete(string $table)
     {
-        $this->query->type = Query::TYPE_DELETE;
+        $this->query->type = Query::DELETE;
         $this->query->from = $table;
         return $this;
     }

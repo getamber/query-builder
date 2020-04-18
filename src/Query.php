@@ -10,10 +10,10 @@ namespace Amber\Components\QueryBuilder;
  */
 class Query
 {
-    const TYPE_SELECT = 'SELECT';
-    const TYPE_INSERT = 'INSERT';
-    const TYPE_UPDATE = 'UPDATE';
-    const TYPE_DELETE = 'DELETE';
+    const SELECT = 'SELECT';
+    const INSERT = 'INSERT';
+    const UPDATE = 'UPDATE';
+    const DELETE = 'DELETE';
 
     public $type;
 

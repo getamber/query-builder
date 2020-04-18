@@ -25,16 +25,16 @@ class QueryCompiler
     public function getSQL(): string
     {
         switch ($this->query->type) {
-            case Query::TYPE_SELECT:
+            case Query::SELECT:
                 return $this->getSQLForSelect();
 
-            case Query::TYPE_INSERT:
+            case Query::INSERT:
                 return $this->getSQLForInsert();
         
-            case Query::TYPE_UPDATE:
+            case Query::UPDATE:
                 return $this->getSQLForUpdate();
 
-            case Query::TYPE_DELETE:
+            case Query::DELETE:
                 return $this->getSQLForDelete();
             
             default:
