@@ -11,7 +11,7 @@ class QueryBuilder
     const TYPE_UPDATE = 'UPDATE';
     const TYPE_DELETE = 'DELETE';
 
-    const SORT_ASC = 'ASC';
+    const SORT_ASC  = 'ASC';
     const SORT_DESC = 'DESC';
 
     protected $type;
@@ -25,18 +25,16 @@ class QueryBuilder
     protected $having;
     protected $orderBy = [];
     protected $limit;
-
-    protected $table;
     protected $values = [];
 
     protected $alias;
 
     public function __construct(Closure $build = null)
     {
-        $this->join = new JoinBuilder();
-        $this->where = new ConditionBuilder();
+        $this->join   = new JoinBuilder();
+        $this->where  = new ConditionBuilder();
         $this->having = new ConditionBuilder();
-        $this->limit = new LimitBuilder();
+        $this->limit  = new LimitBuilder();
 
         if ($build) {
             $this->alias = $build($this);
@@ -257,7 +255,7 @@ class QueryBuilder
     public function insert(string $table, $values = [])
     {
         $this->type = self::TYPE_INSERT;
-        $this->table = $table;
+        $this->from = $table;
         $this->values($values);
         return $this;
     }
@@ -265,7 +263,7 @@ class QueryBuilder
     public function update(string $table, $values = []): self
     {
         $this->type = self::TYPE_UPDATE;
-        $this->table = $table;
+        $this->from = $table;
         $this->values($values);
         return $this;
     }
@@ -279,7 +277,7 @@ class QueryBuilder
     public function delete(string $table)
     {
         $this->type = self::TYPE_DELETE;
-        $this->table = $table;
+        $this->from = $table;
         return $this;
     }
 
@@ -343,7 +341,7 @@ class QueryBuilder
     protected function getSQLForInsert(): string
     {
         return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $this->table,
+            $this->from,
             join(',', array_keys($this->values)),
             join(',', $this->values)
         );
@@ -352,7 +350,7 @@ class QueryBuilder
     protected function getSQLForUpdate(): string
     {
         return sprintf('UPDATE %s SET %s WHERE %s',
-            $this->table,
+            $this->from,
             join(',', array_map(function ($column, $value) {
                 return $column.'='.$value;
             }, array_keys($this->values), $this->values)),
@@ -363,7 +361,7 @@ class QueryBuilder
     protected function getSQLForDelete(): string
     {
         return sprintf('DELETE FROM %s WHERE %s',
-            $this->table,
+            $this->from,
             $this->where->hasConditions() ? $this->where : 1
         );
     }
