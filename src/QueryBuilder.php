@@ -16,26 +16,22 @@ class QueryBuilder
 
     protected $type;
 
-    protected $select = [];
+    protected $select   = [];
     protected $distinct = false;
-    protected $from;
-    protected $join;
-    protected $where;
-    protected $groupBy = [];
-    protected $having;
-    protected $orderBy = [];
-    protected $limit;
-    protected $values = [];
+    protected $from     = null;
+    protected $join     = [];
+    protected $where    = [];
+    protected $groupBy  = [];
+    protected $having   = [];
+    protected $orderBy  = [];
+    protected $limit    = null;
+    protected $offset   = null;
+    protected $values   = [];
 
     protected $alias;
 
     public function __construct(Closure $build = null)
     {
-        $this->join   = new JoinBuilder();
-        $this->where  = new ConditionBuilder();
-        $this->having = new ConditionBuilder();
-        $this->limit  = new LimitBuilder();
-
         if ($build) {
             $this->alias = $build($this);
         }
@@ -87,30 +83,42 @@ class QueryBuilder
             $table = '('.$query.')';
         }
 
-        $this->join->addJoin($table, $alias, $condition, $type);
+        if ($condition instanceof Closure) {
+            $query = new static($condition);
+            $condition = '('.$query.')';
+        }
+
+        $table = trim($table.' '.$alias);
+        $join = $type.' '.$table;
+
+        if ($condition) {
+            $join .= ' ON '.$condition;
+        }
+
+        $this->join[] = $join;
     }
 
     public function join($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::INNER_JOIN);
+        $this->addJoin($table, $alias, $condition, 'JOIN');
         return $this;
     }
 
     public function leftJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::LEFT_JOIN);
+        $this->addJoin($table, $alias, $condition, 'LEFT JOIN');
         return $this;
     }
 
     public function rightJoin($table, string $alias, $condition): self
     {
-        $this->addJoin($table, $alias, $condition, JoinBuilder::RIGHT_JOIN);
+        $this->addJoin($table, $alias, $condition, 'RIGHT JOIN');
         return $this;
     }
 
     public function crossJoin($table, string $alias): self
     {
-        $this->addJoin($table, $alias, null, JoinBuilder::CROSS_JOIN);
+        $this->addJoin($table, $alias, null, 'CROSS JOIN');
         return $this;
     }
 
@@ -121,25 +129,25 @@ class QueryBuilder
             $condition = '('.$query.')';
         }
 
-        $this->where->addCondition($condition, $operator);
+        $this->where[] = trim($operator.' '.$condition);
     }
 
     public function where($condition): self
     {
-        $this->where = new ConditionBuilder();
+        $this->where = [];
         $this->addWhere($condition, null);
         return $this;
     }
 
     public function andWhere($condition): self
     {
-        $this->addWhere($condition, ConditionBuilder::AND);
+        $this->addWhere($condition, 'AND');
         return $this;
     }
 
     public function orWhere($condition): self
     {
-        $this->addWhere($condition, ConditionBuilder::OR);
+        $this->addWhere($condition, 'OR');
         return $this;
     }
 
@@ -151,26 +159,26 @@ class QueryBuilder
 
     public function whereExists(Closure $builder): self
     {
-        $this->where = new ConditionBuilder();
+        $this->where = [];
         $this->addExists($builder, null);
         return $this;
     }
 
     public function andWhereExists(Closure $builder)
     {
-        $this->addExists($builder, ConditionBuilder::AND);
+        $this->addExists($builder, 'AND');
         return $this;
     }
 
     public function orWhereExists(Closure $builder)
     {
-        $this->addExists($builder, ConditionBuilder::OR);
+        $this->addExists($builder, 'OR');
         return $this;
     }
 
     public function whereNotExists(Closure $builder): self
     {
-        $this->where = new ConditionBuilder();
+        $this->where = [];
         $this->addExists($builder, 'NOT');
         return $this;
     }
@@ -218,25 +226,25 @@ class QueryBuilder
             $condition = '('.$query.')';
         }
 
-        $this->having->addCondition($condition, $operator);
+        $this->having[] = trim($operator.' '.$condition);
     }
 
     public function having($condition): self
     {
-        $this->having = new ConditionBuilder();
+        $this->having = [];
         $this->addHaving($condition, null);
         return $this;
     }
 
     public function andHaving($condition): self
     {
-        $this->addHaving($condition, ConditionBuilder::AND);
+        $this->addHaving($condition, 'AND');
         return $this;
     }
 
     public function orHaving($condition): self
     {
-        $this->addHaving($condition, ConditionBuilder::OR);
+        $this->addHaving($condition, 'OR');
         return $this;
     }
 
@@ -297,7 +305,7 @@ class QueryBuilder
                 return $this->getSQLForDelete();
             
             default:
-                return $this->where;
+                return join(' ', $this->where);
         }
     }
 
@@ -315,25 +323,11 @@ class QueryBuilder
             $sql[] = 'FROM '.$this->from;
         }
 
-        $sql[] = (string) $this->join;
-
-        if ($this->where->hasConditions()) {
-            $sql[] = 'WHERE '.$this->where;
-        }
-
-        if ($this->groupBy) {
-            $sql[] = 'GROUP BY '.join(',', $this->groupBy);
-
-            if ($this->having) {
-                $sql[] = 'HAVING '.$this->having;
-            }
-        }
-
-        if ($this->orderBy) {
-            $sql[] = 'ORDER BY '.join(',', $this->orderBy);
-        }
-
-        $sql[] = (string) $this->limit;
+        $sql[] = $this->getSQLForJoins();
+        $sql[] = $this->getSQLForWhereClause();
+        $sql[] = $this->getSQLForGroupByClause();
+        $sql[] = $this->getSQLForOrderByClause();
+        $sql[] = $this->getSQLForLimitClause();
 
         return join(' ', array_filter($sql));
     }
@@ -349,21 +343,74 @@ class QueryBuilder
 
     protected function getSQLForUpdate(): string
     {
-        return sprintf('UPDATE %s SET %s WHERE %s',
+        return sprintf('UPDATE %s SET %s %s',
             $this->from,
             join(',', array_map(function ($column, $value) {
                 return $column.'='.$value;
             }, array_keys($this->values), $this->values)),
-            $this->where->hasConditions() ? $this->where : 1
+            $this->getSQLForWhereClause()
         );
     }
 
     protected function getSQLForDelete(): string
     {
-        return sprintf('DELETE FROM %s WHERE %s',
+        return sprintf('DELETE FROM %s %s',
             $this->from,
-            $this->where->hasConditions() ? $this->where : 1
+            $this->getSQLForWhereClause()
         );
+    }
+
+    protected function getSQLForJoins()
+    {
+        return join(' ', $this->join);
+    }
+
+    protected function getSQLForWhereClause()
+    {
+        if (!$this->where) {
+            return;
+        }
+
+        return 'WHERE '.join(' ', $this->where);
+    }
+
+    protected function getSQLForOrderByClause()
+    {
+        if (!$this->orderBy) {
+            return;
+        }
+
+        return 'ORDER BY '.join(',', $this->orderBy);
+    }
+
+    protected function getSQLForGroupByClause()
+    {
+        if (!$this->groupBy) {
+            return;
+        }
+
+        $sql = 'GROUP BY '.join(' ', $this->groupBy);
+
+        if ($this->having) {
+            $sql .= ' HAVING '.join(',', $this->having);
+        }
+
+        return $sql;
+    }
+
+    protected function getSQLForLimitClause()
+    {
+        $query = [];
+
+        if ($this->limit) {
+            $query[] = 'LIMIT '.$this->limit;
+        }
+
+        if ($this->offset) {
+            $query[] = 'OFFSET '.$this->offset;
+        }
+
+        return join(' ', $query);
     }
 
     public function __toString()
