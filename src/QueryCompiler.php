@@ -3,11 +3,19 @@
 namespace Amber\Components\QueryBuilder;
 
 /**
- * Compiles a query object into an SQL string.
+ * Query object compiler.
+ * 
+ * @author  Ken Lynch
+ * @license MIT
  */
 class QueryCompiler
 {
     protected $query;
+
+    public static function create(Query $query)
+    {
+        return new static($query);
+    }
 
     public function __construct(Query $query)
     {

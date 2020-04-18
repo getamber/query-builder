@@ -3,7 +3,10 @@
 namespace Amber\Components\QueryBuilder;
 
 /**
- * Holds data about the query.
+ * Represents an SQL query.
+ * 
+ * @author  Ken Lynch
+ * @license MIT
  */
 class Query
 {

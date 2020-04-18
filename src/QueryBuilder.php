@@ -4,6 +4,12 @@ namespace Amber\Components\QueryBuilder;
 
 use Closure;
 
+/**
+ * Fluent query builder.
+ * 
+ * @author  Ken Lynch
+ * @license MIT
+ */
 class QueryBuilder
 {
     const SORT_ASC  = 'ASC';
@@ -13,10 +19,10 @@ class QueryBuilder
     protected $compiler;
     protected $alias;
 
-    public function __construct(Closure $build = null, QueryCompiler $compiler = null)
+    public function __construct(Closure $build = null, $compiler = QueryCompiler::class)
     {
         $this->query    = new Query();
-        $this->compiler = $compiler ?? new QueryCompiler($this->query);
+        $this->compiler = new $compiler($this->query);
 
         if ($build) {
             $this->alias = $build($this);
@@ -35,7 +41,7 @@ class QueryBuilder
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
             if ($column instanceof Closure) {
-                $query = new static($column);
+                $query = new static($column, get_class($this->compiler));
                 return trim('('.$query.') '.$query->alias);
             } else {
                 return $column;
@@ -54,7 +60,7 @@ class QueryBuilder
     public function from($from): self
     {
         if ($from instanceof Closure) {
-            $query = new static($from);
+            $query = new static($from, get_class($this->compiler));
             $from = trim('('.$query.') '.$query->alias);
         }
 
@@ -65,12 +71,12 @@ class QueryBuilder
     protected function addJoin($table, $condition, $type)
     {
         if ($table instanceof Closure) {
-            $query = new static($table);
+            $query = new static($table, get_class($this->compiler));
             $table = trim('('.$query.') '.$query->alias);
         }
 
         if ($condition instanceof Closure) {
-            $query = new static($condition);
+            $query = new static($condition, get_class($this->compiler));
             $condition = '('.$query.')';
         }
 
@@ -104,7 +110,7 @@ class QueryBuilder
     protected function addWhere($condition, $operator, $append = true)
     {
         if ($condition instanceof Closure) {
-            $query = new static($condition);
+            $query = new static($condition, get_class($this->compiler));
             $condition = '('.$query.')';
         }
 
@@ -149,7 +155,7 @@ class QueryBuilder
 
     protected function addExists(Closure $builder, $operator)
     {
-        $query = new static($builder);
+        $query = new static($builder, get_class($this->compiler));
         $this->addWhere('EXISTS ('.$query.')', $operator);
     }
 
@@ -167,19 +173,19 @@ class QueryBuilder
         return $this;
     }
 
-    public function andWhereExists(Closure $builder)
+    public function andWhereExists(Closure $builder): self
     {
         $this->addExists($builder, 'AND');
         return $this;
     }
 
-    public function andWhereNotExists(Closure $builder)
+    public function andWhereNotExists(Closure $builder): self
     {
         $this->addExists($builder, 'AND NOT');
         return $this;
     }
 
-    public function orWhereExists(Closure $builder)
+    public function orWhereExists(Closure $builder): self
     {
         $this->addExists($builder, 'OR');
         return $this;
@@ -218,7 +224,7 @@ class QueryBuilder
     protected function addHaving($condition, $operator, $append = true)
     {
         if ($condition instanceof Closure) {
-            $query = new static($condition);
+            $query = new static($condition, get_class($this->compiler));
             $condition = '('.$query.')';
         }
 
