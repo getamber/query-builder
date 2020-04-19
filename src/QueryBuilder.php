@@ -40,8 +40,8 @@ class QueryBuilder
      */
     public function select($columns): self
     {
-        $this->query->select = [];
-        $this->query->type = Query::SELECT;
+        $this->query->setType(Query::SELECT);
+        $this->query->resetPart('select');        
         return $this->addSelect(func_get_args());
     }
 
@@ -56,13 +56,13 @@ class QueryBuilder
                 return $column;
             }
         }, $columns);
-        array_push($this->query->select, ...$columns);        
+        $this->query->addSelect($columns);
         return $this;
     }
 
     public function distinct(bool $distinct = true): self
     {
-        $this->query->distinct = $distinct;
+        $this->query->setDistinct($distinct);
         return $this;
     }
 
@@ -77,130 +77,138 @@ class QueryBuilder
         return $this;
     }
 
-    protected function addJoin($table, $condition, $type)
+    protected function addJoin($join, $table, $on)
     {
         if ($table instanceof Closure) {
             $query = new static($this->compiler, $table);
             $table = '('.$query.')'.($query->alias ? ' AS '.$query->alias : '');
         }
 
-        if ($condition instanceof Closure) {
-            $query = new static($this->compiler, $condition);
-            $condition = '('.$query.')';
+        if ($on instanceof Closure) {
+            $query = new static($this->compiler, $on);
+            $on = '('.$query.')';
         }
 
-        $this->query->addJoin($table, $condition, $type);
+        $this->query->addJoin($join, $table, $on);
     }
 
-    public function join($table, $condition): self
+    public function join($table, $on): self
     {
-        $this->addJoin($table, $condition, 'JOIN');
+        $this->addJoin('INNER JOIN', $table, $on);
         return $this;
     }
 
-    public function leftJoin($table, $condition): self
+    public function leftJoin($table, $on): self
     {
-        $this->addJoin($table, $condition, 'LEFT JOIN');
+        $this->addJoin('LEFT JOIN', $table, $on);
         return $this;
     }
 
-    public function rightJoin($table, $condition): self
+    public function rightJoin($table, $on): self
     {
-        $this->addJoin($table, $condition, 'RIGHT JOIN');
+        $this->addJoin('RIGHT JOIN', $table, $on);
         return $this;
     }
 
     public function crossJoin($table): self
     {
-        $this->addJoin($table, null, 'CROSS JOIN');
+        $this->addJoin('CROSS JOIN', $table, null);
         return $this;
     }
 
-    protected function addWhere($condition, $operator, $append = true)
+    protected function addWhere(...$conditions)
     {
-        if ($condition instanceof Closure) {
-            $query = new static($this->compiler, $condition);
-            $condition = '('.$query.')';
-        }
-
-        $this->query->addWhere($condition, $operator, $append);
+        $conditions = array_map(function ($part) {
+            if ($part instanceof Closure) {
+                $query = new static($this->compiler, $part);
+                return '('.$query.')';
+            } else {
+                return $part;
+            }
+        }, $conditions);
+        
+        $this->query->addWhere($conditions);
     }
 
-    public function where($condition): self
+    public function where(...$conditions): self
     {
-        $this->addWhere($condition, null, false);
+        $this->query->resetPart('where');
+        $this->addWhere(...$conditions);
         return $this;
     }
 
-    public function whereNot($condition): self
+    public function whereNot(...$conditions): self
     {
-        $this->addWhere($condition, 'NOT', false);
+        $this->query->resetPart('where');
+        $this->addWhere('NOT ', ...$conditions);
         return $this;
     }
 
-    public function andWhere($condition): self
+    public function andWhere(...$conditions): self
     {
-        $this->addWhere($condition, 'AND');
+        $this->addWhere('AND', ...$conditions);
         return $this;
     }
 
-    public function andWhereNot($condition): self
+    public function andWhereNot($conditions): self
     {
-        $this->addWhere($condition, 'AND NOT');
+        $this->addWhere('AND NOT', ...$conditions);
         return $this;
     }
 
-    public function orWhere($condition): self
+    public function orWhere(...$conditions): self
     {
-        $this->addWhere($condition, 'OR');
+        $this->addWhere('OR', ...$conditions);
         return $this;
     }
 
-    public function orWhereNot($condition): self
+    public function orWhereNot(...$conditions): self
     {
-        $this->addWhere($condition, 'OR NOT');
+        $this->addWhere('OR NOT', ...$conditions);
         return $this;
     }
 
     public function whereExists(Closure $builder): self
     {
-        $this->addWhere($builder, 'EXISTS', false);
+        $this->query->resetPart('where');
+        $this->addWhere('EXISTS', $builder);
         return $this;
     }
 
     public function whereNotExists(Closure $builder): self
     {
-        $this->addWhere($builder, 'NOT EXISTS', false);
+        $this->query->resetPart('where');
+        $this->addWhere('NOT EXISTS', $builder);
         return $this;
     }
 
     public function andWhereExists(Closure $builder): self
     {
-        $this->addWhere($builder, 'AND EXISTS');
+        $this->addWhere('AND EXISTS', $builder);
         return $this;
     }
 
     public function andWhereNotExists(Closure $builder): self
     {
-        $this->addWhere($builder, 'AND NOT EXISTS');
+        $this->addWhere('AND NOT EXISTS', $builder);
         return $this;
     }
 
     public function orWhereExists(Closure $builder): self
     {
-        $this->addWhere($builder, 'OR EXISTS');
+        $this->addWhere('OR EXISTS', $builder);
         return $this;
     }
 
     public function orWhereNotExists(Closure $builder)
     {
-        $this->addWhere($builder, 'OR NOT EXISTS');
+        $this->addWhere('OR NOT EXISTS', $builder);
         return $this;
     }
 
     public function orderBy(string $column, string $sort = self::SORT_ASC): self
     {
-        $this->query->orderBy = [];
+        $this->query->resetPart('orderBy');
         return $this->addOrderBy($column, $sort);
     }
 
@@ -212,6 +220,7 @@ class QueryBuilder
 
     public function groupBy($column): self
     {
+        $this->query->resetPart('groupBy');
         $this->query->addGroupBy($column, false);
         return $this;
     }
@@ -222,53 +231,59 @@ class QueryBuilder
         return $this;
     }
 
-    protected function addHaving($condition, $operator, $append = true)
+    protected function addHaving(...$conditions)
     {
-        if ($condition instanceof Closure) {
-            $query = new static($this->compiler, $condition);
-            $condition = '('.$query.')';
-        }
+        $conditions = array_map(function ($part) {
+            if ($part instanceof Closure) {
+                $query = new static($this->compiler, $part);
+                return '('.$query.')';
+            } else {
+                return $part;
+            }
+        }, $conditions);
 
-        $this->query->addHaving($condition, $operator);
+        $this->query->addHaving($conditions);
     }
 
-    public function having($condition): self
+    public function having(...$conditions): self
     {
-        $this->addHaving($condition, null, false);
+        $this->query->resetPart('having');
+        $this->addHaving(...$conditions);
         return $this;
     }
 
-    public function notHaving($condition): self
+    public function notHaving(...$conditions): self
     {
-        $this->addHaving($condition, 'NOT', false);
+        $this->query->resetPart('having');
+        $this->addHaving('NOT', ...$conditions);
         return $this;
     }
 
-    public function andHaving($condition): self
+    public function andHaving(...$conditions): self
     {
-        $this->addHaving($condition, 'AND');
+        $this->addHaving('AND', ...$conditions);
         return $this;
     }
 
-    public function andNotHaving($condition): self
+    public function andNotHaving(...$conditions): self
     {
-        $this->addHaving($condition, 'AND NOT');
+        $this->addHaving('AND NOT', ...$conditions);
         return $this;
     }
 
-    public function orHaving($condition): self
+    public function orHaving(...$conditions): self
     {
-        $this->addHaving($condition, 'OR');
+        $this->addHaving('OR', ...$conditions);
         return $this;
     }
 
-    public function orNotHaving($condition): self
+    public function orNotHaving(...$conditions): self
     {
-        $this->addHaving($condition, 'OR NOT');
+        $this->addHaving('OR NOT', ...$conditions);
         return $this;
     }
 
-    public function limit(int $limit): self
+    public function limit(?int $limit): self
     {
         $this->query->limit = $limit;
         return $this;
@@ -282,30 +297,42 @@ class QueryBuilder
 
     public function insert(string $table, $values = [])
     {
-        $this->query->type = Query::INSERT;
-        $this->query->from = $table;
+        $this->query->setType(Query::INSERT);
+        $this->query->setFrom($table);
         $this->values($values);
         return $this;
     }
 
     public function update(string $table, $values = []): self
     {
-        $this->query->type = Query::UPDATE;
-        $this->query->from = $table;
+        $this->query->setType(Query::UPDATE);
+        $this->query->setFrom($table);
         $this->values($values);
         return $this;
     }
 
+    /**
+     * Sets the values for an update or an insert query.
+     * 
+     * @param array $values Key value pairs of columns and values.
+     * @return QueryBuilder
+     */
     public function values(array $values): self
     {
-        $this->query->values = array_merge($this->query->values, $values);
+        $this->query->addValues($values);
         return $this;
     }
 
+    /**
+     * Starts building a delete query.
+     * 
+     * @parameter string $table
+     * @return QueryBuilder
+     */
     public function delete(string $table)
     {
-        $this->query->type = Query::DELETE;
-        $this->query->from = $table;
+        $this->query->setType(Query::DELETE);
+        $this->query->setFrom($table);
         return $this;
     }
 

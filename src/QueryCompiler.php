@@ -12,7 +12,7 @@ class QueryCompiler
 {
     public function getSQL(Query $query): string
     {
-        switch ($query->type) {
+        switch ($query->getType()) {
             case Query::SELECT:
                 return $this->getSQLForSelect($query);
 
@@ -26,7 +26,7 @@ class QueryCompiler
                 return $this->getSQLForDelete($query);
             
             default:
-                return $this->getSQLForConditions($query->where);
+                return $this->getSQLForConditions($query->getPart('where'));
         }
     }
 
@@ -34,21 +34,21 @@ class QueryCompiler
     {
         $sql = ['SELECT'];
 
-        if ($query->distinct) {
+        if ($query->getPart('distinct')) {
             $sql[] = 'DISTINCT';
         }
 
-        $sql[] = join(',', $query->select);
+        $sql[] = join(',', $query->getPart('select'));
         
-        if ($query->from) {
-            $sql[] = 'FROM '.$query->from;
+        if ($from = $query->getPart('from')) {
+            $sql[] = 'FROM '.$from;
         }
 
-        $sql[] = $this->getSQLForJoins($query->join);
-        $sql[] = $this->getSQLForWhereClause($query->where);
-        $sql[] = $this->getSQLForGroupByClause($query->groupBy, $query->having);
-        $sql[] = $this->getSQLForOrderByClause($query->orderBy);
-        $sql[] = $this->getSQLForLimitClause($query->limit, $query->offset);
+        $sql[] = $this->getSQLForJoins($query->getPart('join'));
+        $sql[] = $this->getSQLForWhereClause($query->getPart('where'));
+        $sql[] = $this->getSQLForGroupByClause($query->getPart('groupBy'), $query->getPart('having'));
+        $sql[] = $this->getSQLForOrderByClause($query->getPart('orderBy'));
+        $sql[] = $this->getSQLForLimitClause($query->getPart('limit'), $query->getPart('offset'));
 
         return join(' ', array_filter($sql));
     }
@@ -56,28 +56,28 @@ class QueryCompiler
     protected function getSQLForInsert(Query $query): string
     {
         return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $query->from,
-            join(',', array_keys($query->values)),
-            join(',', $query->values)
+            $query->getPart('from'),
+            join(',', array_keys($query->getPart('values'))),
+            join(',', $query->getPart('values'))
         );
     }
 
     protected function getSQLForUpdate(Query $query): string
     {
         return sprintf('UPDATE %s SET %s %s',
-            $query->from,
+            $query->getPart('from'),
             join(',', array_map(function ($column, $value) {
                 return $column.'='.$value;
-            }, array_keys($query->values), $query->values)),
-            $this->getSQLForWhereClause($query->where)
+            }, array_keys($query->getPart('values')), $query->getPart('values'))),
+            $this->getSQLForWhereClause($query->getPart('where'))
         );
     }
 
     protected function getSQLForDelete(Query $query): string
     {
         return sprintf('DELETE FROM %s %s',
-            $query->from,
-            $this->getSQLForWhereClause($query->where)
+            $query->getPart('from'),
+            $this->getSQLForWhereClause($query->getPart('where'))
         );
     }
 
@@ -88,15 +88,15 @@ class QueryCompiler
         }, $joins));
     }
 
-    protected function getSQLForJoin($table, $condition, $type): string
+    protected function getSQLForJoin($join, $table, $on): string
     {
-        $join = $type.' '.$table;
+        $sql = $join.' '.$table;
 
-        if ($condition) {
-            $join .= ' ON '.$condition;
+        if ($on) {
+            $sql .= ' ON '.$on;
         }
 
-        return $join;
+        return $sql;
     }
 
     protected function getSQLForWhereClause($where): string
@@ -110,14 +110,9 @@ class QueryCompiler
 
     protected function getSQLForConditions(array $conditions): string
     {
-        return join(' ', array_map(function ($condition) {
-            return $this->getSQLForCondition(...$condition);
+        return join(' ', array_map(function ($parts) {
+            return join(' ', $parts);
         }, $conditions));
-    }
-
-    protected function getSQLForCondition($condition, $operator)
-    {
-        return trim($operator.' '.$condition);
     }
 
     protected function getSQLForOrderByClause($orderBy): string

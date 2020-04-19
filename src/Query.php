@@ -15,97 +15,138 @@ class Query
     const UPDATE = 'UPDATE';
     const DELETE = 'DELETE';
 
-    public $type;
+    protected const QUERY_PART_DEFAULTS = [
+        'select'   => [],
+        'distinct' => false,
+        'from'     => null,
+        'join'     => [],
+        'where'    => [],
+        'groupBy'  => [],
+        'having'   => [],
+        'orderBy'  => [],
+        'limit'    => null,
+        'offset'   => 0,
+        'values'   => [],
+    ];
 
-    public $select   = [];
-    public $distinct = false;
-    public $from     = null;
-    public $join     = [];
-    public $where    = [];
-    public $groupBy  = [];
-    public $having   = [];
-    public $orderBy  = [];
-    public $limit    = null;
-    public $offset   = 0;
-    public $values   = [];
+    protected $type;
+    protected $parts = self::QUERY_PART_DEFAULTS;
+
+    /**
+     * Sets the query type.
+     * 
+     * @param string $type
+     */
+    public function setType(string $type)
+    {
+        $this->type = $type;
+    }
+
+    /**
+     * Gets the query type.
+     * 
+     * @return string|null
+     */
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    /**
+     * Gets a query part.
+     * 
+     * @param string $part The name of the query part.
+     * @return mixed
+     */
+    public function getPart(string $part)
+    {
+        return $this->parts[$part];
+    }
+
+    /**
+     * Resets a query part.
+     * 
+     * @param string $part The name of the part to reset.
+     */
+    public function resetPart(string $part)
+    {
+        $this->parts[$part] = self::QUERY_PART_DEFAULTS[$part];
+    }
 
     /**
      * Adds a select clause to the query.
+     * 
+     * @param array $columns
      */
-    public function addSelect(array $columns, $append = true)
+    public function addSelect(array $columns)
     {
-        if (!$append) {
-            $this->select = [];
-        }
+        array_push($this->parts['select'], ...$columns);
+    }
 
-        array_push($this->select, ...$columns);
+    /**
+     * Sets whether the select clause is distinct.
+     * 
+     * @param bool $distinct
+     */
+    public function setDistinct(bool $distinct)
+    {
+        $this->parts['distinct'] = $distinct;
     }
 
     /**
      * Sets the from clause of the query.
+     * 
+     * @param mixed $table
      */
     public function setFrom($table)
     {
-        $this->from = $table;
+        $this->parts['from'] = $table;
     }
 
-    public function addJoin($table, $condition, $type)
+    /**
+     * Adds a join clause to the query.
+     *
+     * @param string $type      The type of join.
+     * @param mixed  $table
+     * @param mixed  $on
+     */
+    public function addJoin($type, $table, $on)
     {
-        $this->join[] = [$table, $condition, $type];
+        $this->parts['join'][] = [$type, $table, $on];
     }
 
-    public function addWhere($condition, $operator, $append = true)
+    public function addWhere(array $conditions)
     {
-        if (!$append) {
-            $this->where = [];
-        }
-
-        $this->where[] = [$condition, $operator];
+        $this->parts['where'][] = $conditions;
     }
 
-    public function addGroupBy($column, $append = true)
+    public function addGroupBy($column)
     {
-        if (!$append) {
-            $this->groupBy = [];
-        }
-
-        $this->groupBy[] = $column;
+        $this->parts['groupBy'][] = $column;
     }
 
-    public function addHaving($condition, $operator, $append = true)
+    public function addHaving(array $conditions)
     {
-        if (!$append) {
-            $this->having = [];
-        }
-
-        $this->having[] = [$condition, $operator];
+        $this->parts['having'][] = $conditions;
     }
 
-    public function addOrderBy($column, $sort, $append = true)
+    public function addOrderBy($column, $sort)
     {
-        if (!$append) {
-            $this->orderBy = [];
-        }
-
-        $this->orderBy[] = [$column, $sort];
+        $this->parts['orderBy'][] = [$column, $sort];
     }
 
     public function setLimit($limit)
     {
-        $this->limit = $limit;
+        $this->parts['limit'] = $limit;
     }
 
     public function setOffset($offset)
     {
-        $this->offset = $offset;
+        $this->parts['offset'] = $offset;
     }
 
-    public function addValues(array $values, $append = true)
+    public function addValues(array $values)
     {
-        if (!$append) {
-            $this->values = [];
-        }
-
-        array_push($this->values, $values);
+        $this->parts['values'] = array_merge($this->parts['values'], $values);
     }
 }
