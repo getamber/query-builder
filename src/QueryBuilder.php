@@ -12,12 +12,30 @@ use Closure;
  */
 class QueryBuilder
 {
+    const SELECT = 'SELECT';
+    const INSERT = 'INSERT';
+    const UPDATE = 'UPDATE';
+    const DELETE = 'DELETE';
+
     const SORT_ASC  = 'ASC';
     const SORT_DESC = 'DESC';
 
-    protected $query;
     protected $compiler;
+
+    protected $type;
     protected $alias;
+
+    protected $select   = [];
+    protected $distinct = false;
+    protected $from     = null;
+    protected $join     = [];
+    protected $where    = [];
+    protected $orderBy  = [];
+    protected $groupBy  = [];
+    protected $having   = [];
+    protected $limit    = null;
+    protected $offset   = 0;
+    protected $values   = [];
 
     /**
      * Initialises a new QueryBuilder
@@ -27,7 +45,6 @@ class QueryBuilder
      */
     public function __construct(QueryCompiler $compiler = null, Closure $build = null)
     {
-        $this->query    = new Query();
         $this->compiler = $compiler ?? new QueryCompiler();
 
         if ($build) {
@@ -36,17 +53,38 @@ class QueryBuilder
     }
 
     /**
+     * Gets the query type
      * 
+     * @return string
+     */
+    public function getType()
+    {
+        return $this->type;
+    }
+
+    /**
+     * Starts a select query.
+     * 
+     * @param $columns
+     * 
+     * @return self
      */
     public function select($columns): self
     {
-        $this->query->setType(Query::SELECT);
-        $this->query->resetPart('select');        
+        $this->select = [];
         return $this->addSelect(func_get_args());
     }
 
+    /**
+     * Adds extra columns to a select query.
+     * 
+     * @param $columns
+     * 
+     * @return self
+     */
     public function addSelect($columns): self
     {
+        $this->type = self::SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
             if ($column instanceof Closure) {
@@ -56,16 +94,41 @@ class QueryBuilder
                 return $column;
             }
         }, $columns);
-        $this->query->addSelect($columns);
+        
+        array_push($this->select, ...$columns);
         return $this;
     }
 
+    public function getSelect(): array
+    {
+        return $this->select;
+    }
+
+    /**
+     * Sets whether a select query should return distinct rows.
+     * 
+     * @param bool $distinct
+     * 
+     * @return self
+     */
     public function distinct(bool $distinct = true): self
     {
-        $this->query->setDistinct($distinct);
+        $this->distinct = $distinct;
         return $this;
     }
 
+    public function isDistinct(): bool
+    {
+        return $this->distinct;
+    }
+
+    /**
+     * Sets the from clause of a select query.
+     * 
+     * @param $from
+     * 
+     * @return self
+     */
     public function from($from): self
     {
         if ($from instanceof Closure) {
@@ -73,8 +136,13 @@ class QueryBuilder
             $from = '('.$query.')'.($query->alias ? ' AS '.$query->alias : '');
         }
 
-        $this->query->setFrom($from);
+        $this->from = $from;
         return $this;
+    }
+
+    public function getFrom(): ?string
+    {
+        return $this->from;
     }
 
     protected function addJoin($join, $table, $on)
@@ -89,7 +157,7 @@ class QueryBuilder
             $on = '('.$query.')';
         }
 
-        $this->query->addJoin($join, $table, $on);
+        $this->join[] = [$join, $table, $on];
     }
 
     public function join($table, $on): self
@@ -116,6 +184,11 @@ class QueryBuilder
         return $this;
     }
 
+    public function getJoin(): array
+    {
+        return $this->join;
+    }
+
     protected function addWhere(...$conditions)
     {
         $conditions = array_map(function ($part) {
@@ -127,19 +200,19 @@ class QueryBuilder
             }
         }, $conditions);
         
-        $this->query->addWhere($conditions);
+        $this->where[] = $conditions;
     }
 
     public function where(...$conditions): self
     {
-        $this->query->resetPart('where');
+        $this->where = [];
         $this->addWhere(...$conditions);
         return $this;
     }
 
     public function whereNot(...$conditions): self
     {
-        $this->query->resetPart('where');
+        $this->where = [];
         $this->addWhere('NOT ', ...$conditions);
         return $this;
     }
@@ -170,14 +243,14 @@ class QueryBuilder
 
     public function whereExists(Closure $builder): self
     {
-        $this->query->resetPart('where');
+        $this->where = [];
         $this->addWhere('EXISTS', $builder);
         return $this;
     }
 
     public function whereNotExists(Closure $builder): self
     {
-        $this->query->resetPart('where');
+        $this->where = [];
         $this->addWhere('NOT EXISTS', $builder);
         return $this;
     }
@@ -206,30 +279,46 @@ class QueryBuilder
         return $this;
     }
 
+    public function getWhere(): array
+    {
+        return $this->where;
+    }
+
     public function orderBy(string $column, string $sort = self::SORT_ASC): self
     {
-        $this->query->resetPart('orderBy');
+        $this->orderBy = [];
         return $this->addOrderBy($column, $sort);
     }
 
     public function addOrderBy(string $column, string $sort = self::SORT_ASC): self
     {
-        $this->query->addOrderBy($column, $sort);
+        $this->orderBy[] = [$column, $sort];
         return $this;
+    }
+
+    public function getOrderBy(): array
+    {
+        return $this->orderBy;
     }
 
     public function groupBy($column): self
     {
-        $this->query->resetPart('groupBy');
-        $this->query->addGroupBy($column, false);
+        $this->groupBy = [];
+        $this->addGroupBy($column, false);
         return $this;
     }
 
     public function addGroupBy($column): self
     {
-        $this->query->addGroupBy($column);
+        $this->groupBy[] = $column;
         return $this;
     }
+
+    public function getGroupBy(): array
+    {
+        return $this->groupBy;
+    }
+
 
     protected function addHaving(...$conditions)
     {
@@ -242,19 +331,19 @@ class QueryBuilder
             }
         }, $conditions);
 
-        $this->query->addHaving($conditions);
+        array_push($this->having, ...$conditions);
     }
 
     public function having(...$conditions): self
     {
-        $this->query->resetPart('having');
+        $this->having = [];
         $this->addHaving(...$conditions);
         return $this;
     }
 
     public function notHaving(...$conditions): self
     {
-        $this->query->resetPart('having');
+        $this->having = [];
         $this->addHaving('NOT', ...$conditions);
         return $this;
     }
@@ -283,31 +372,54 @@ class QueryBuilder
         return $this;
     }
 
+    public function getHaving(): array
+    {
+        return $this->having;
+    }
+
     public function limit(?int $limit): self
     {
-        $this->query->limit = $limit;
+        $this->limit = $limit;
         return $this;
+    }
+
+    public function getLimit(): ?int
+    {
+        return $this->limit;
     }
 
     public function offset(int $offset): self
     {
-        $this->query->limit = $offset;
+        $this->offset = $offset;
         return $this;
+    }
+
+    public function getOffset(): int
+    {
+        return $this->offset;
     }
 
     public function insert(string $table, $values = [])
     {
-        $this->query->setType(Query::INSERT);
-        $this->query->setFrom($table);
-        $this->values($values);
+        $this->type = self::INSERT;
+        $this->from($table);
+        $this->values = $values;
         return $this;
     }
 
+    /**
+     * Starts an update query.
+     * 
+     * @param string $table
+     * @param array  $values Array with column names as keys.
+     * 
+     * @return self
+     */
     public function update(string $table, $values = []): self
     {
-        $this->query->setType(Query::UPDATE);
-        $this->query->setFrom($table);
-        $this->values($values);
+        $this->type = self::UPDATE;
+        $this->from($table);
+        $this->values = $values;
         return $this;
     }
 
@@ -319,8 +431,13 @@ class QueryBuilder
      */
     public function values(array $values): self
     {
-        $this->query->addValues($values);
+        $this->values = array_merge($this->values, $values);
         return $this;
+    }
+
+    public function getValues(): array
+    {
+        return $this->values;
     }
 
     /**
@@ -331,14 +448,19 @@ class QueryBuilder
      */
     public function delete(string $table)
     {
-        $this->query->setType(Query::DELETE);
-        $this->query->setFrom($table);
+        $this->type = self::DELETE;
+        $this->from($table);
         return $this;
     }
 
+    /**
+     * Gets the SQL for the query.
+     * 
+     * @return string
+     */
     public function getSQL(): string
     {
-        return $this->compiler->getSQL($this->query);
+        return $this->compiler->getSQL($this);
     }
 
     public function __toString()

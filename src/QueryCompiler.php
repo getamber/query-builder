@@ -3,81 +3,81 @@
 namespace Amber\Components\QueryBuilder;
 
 /**
- * Query object compiler.
+ * QueryBuilder object compiler.
  * 
  * @author  Ken Lynch
  * @license MIT
  */
 class QueryCompiler
 {
-    public function getSQL(Query $query): string
+    public function getSQL(QueryBuilder $query): string
     {
         switch ($query->getType()) {
-            case Query::SELECT:
+            case QueryBuilder::SELECT:
                 return $this->getSQLForSelect($query);
 
-            case Query::INSERT:
+            case QueryBuilder::INSERT:
                 return $this->getSQLForInsert($query);
         
-            case Query::UPDATE:
+            case QueryBuilder::UPDATE:
                 return $this->getSQLForUpdate($query);
 
-            case Query::DELETE:
+            case QueryBuilder::DELETE:
                 return $this->getSQLForDelete($query);
             
             default:
-                return $this->getSQLForConditions($query->getPart('where'));
+                return $this->getSQLForConditions($query->getWhere());
         }
     }
 
-    protected function getSQLForSelect($query): string
+    protected function getSQLForSelect(QueryBuilder $query): string
     {
         $sql = ['SELECT'];
 
-        if ($query->getPart('distinct')) {
+        if ($query->isDistinct()) {
             $sql[] = 'DISTINCT';
         }
 
-        $sql[] = join(',', $query->getPart('select'));
+        $sql[] = join(',', $query->getSelect());
         
-        if ($from = $query->getPart('from')) {
+        if ($from = $query->getFrom()) {
             $sql[] = 'FROM '.$from;
         }
 
-        $sql[] = $this->getSQLForJoins($query->getPart('join'));
-        $sql[] = $this->getSQLForWhereClause($query->getPart('where'));
-        $sql[] = $this->getSQLForGroupByClause($query->getPart('groupBy'), $query->getPart('having'));
-        $sql[] = $this->getSQLForOrderByClause($query->getPart('orderBy'));
-        $sql[] = $this->getSQLForLimitClause($query->getPart('limit'), $query->getPart('offset'));
+        $sql[] = $this->getSQLForJoins($query->getJoin());
+        $sql[] = $this->getSQLForWhereClause($query->getWhere());
+        $sql[] = $this->getSQLForGroupByClause($query->getGroupBy(), $query->getHaving());
+        $sql[] = $this->getSQLForOrderByClause($query->getOrderBy());
+        $sql[] = $this->getSQLForLimitClause($query->getLimit(), $query->getOffset());
 
         return join(' ', array_filter($sql));
     }
 
-    protected function getSQLForInsert(Query $query): string
+    protected function getSQLForInsert(QueryBuilder $query): string
     {
         return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $query->getPart('from'),
-            join(',', array_keys($query->getPart('values'))),
-            join(',', $query->getPart('values'))
+            $query->getFrom(),
+            join(',', array_keys($query->getValues())),
+            join(',', $query->getValues())
         );
     }
 
-    protected function getSQLForUpdate(Query $query): string
+    protected function getSQLForUpdate(QueryBuilder $query): string
     {
         return sprintf('UPDATE %s SET %s %s',
-            $query->getPart('from'),
+            $query->getFrom(),
             join(',', array_map(function ($column, $value) {
                 return $column.'='.$value;
-            }, array_keys($query->getPart('values')), $query->getPart('values'))),
-            $this->getSQLForWhereClause($query->getPart('where'))
+            }, array_keys($query->getValues()), $query->getValues())),
+            $this->getSQLForWhereClause($query->getWhere())
         );
     }
 
-    protected function getSQLForDelete(Query $query): string
+    protected function getSQLForDelete(QueryBuilder $query): string
     {
         return sprintf('DELETE FROM %s %s',
-            $query->getPart('from'),
-            $this->getSQLForWhereClause($query->getPart('where'))
+            $query->getFrom(),
+            $this->getSQLForWhereClause($query->getWhere())
         );
     }
 
