@@ -38,10 +38,17 @@ class QueryBuilder
     protected $offset   = 0;
     protected $values   = [];
 
+    /**
+     * Creates a new QueryBuilder from a closure.
+     * 
+     * @param QueryCompiler $compiler
+     * @param Closure       $closure  A closure to build the query and return an alias.
+     * @param bool          $subquery Whether or not to create a subquery.
+     */
     protected static function createFromClosure(QueryCompiler $compiler, Closure $closure, $subquery = false)
     {
-        $query = new static($compiler, $subquery);
-        $query->alias = $closure($query);
+        $query = new static($compiler);
+        $query->setSubquery($subquery, $closure($query));
 
         return $query;
     }
@@ -49,15 +56,11 @@ class QueryBuilder
     /**
      * Initialises a new QueryBuilder
      * 
-     * @param string  $compiler
-     * @param bool    $subquery
-     * @param string  $alias     
+     * @param QueryCompiler|null $compiler
      */
-    public function __construct(QueryCompiler $compiler = null, $subquery = false, $alias = null) 
+    public function __construct(QueryCompiler $compiler = null) 
     {
         $this->compiler = $compiler ?? new QueryCompiler();
-        $this->subquery = $subquery;
-        $this->alias = $alias;
     }
 
     /**
@@ -71,7 +74,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets whether or not this is a subquery.
+     * Sets whether or not the query is a subquery.
      * 
      * @param bool   $subquery
      * @param string $alias
@@ -86,7 +89,7 @@ class QueryBuilder
     }
 
     /**
-     * Checks whether or not this is a subquery.
+     * Checks whether or not the query is a subquery.
      * 
      * @return bool
      */
@@ -146,7 +149,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets whether a select query should return distinct rows.
+     * Sets whether or not a select query returns distinct rows.
      * 
      * @param bool $distinct
      * @return self
@@ -158,7 +161,7 @@ class QueryBuilder
     }
 
     /**
-     * Checks whether a select query is distinct or not.
+     * Checks whether or not a select query returns distinct rows.
      * 
      * @return bool
      */
@@ -270,9 +273,9 @@ class QueryBuilder
     }
 
     /**
-     * Gets an array of join clauses.
+     * Gets the join clauses of a select query+.
      * 
-     * @return array
+     * @return array[]
      */
     public function getJoin(): array
     {
@@ -384,7 +387,7 @@ class QueryBuilder
     /**
      * Gets the where clause for the query.
      * 
-     * @return array
+     * @return (string|QueryBuilder)[]
      */
     public function getWhere(): array
     {
@@ -421,7 +424,7 @@ class QueryBuilder
     /**
      * Gets the order by clause for a select query.
      * 
-     * @return array
+     * @return array[]
      */
     public function getOrderBy(): array
     {
@@ -434,7 +437,7 @@ class QueryBuilder
      * @param string $column
      * @return self
      */
-    public function groupBy($column): self
+    public function groupBy(string $column): self
     {
         $this->groupBy = [];
         $this->addGroupBy($column, false);
@@ -447,7 +450,7 @@ class QueryBuilder
      * @param string $column
      * @return self
      */
-    public function addGroupBy($column): self
+    public function addGroupBy(string $column): self
     {
         $this->groupBy[] = $column;
         return $this;
@@ -456,7 +459,7 @@ class QueryBuilder
     /**
      * Gets the group by clause of a select query.
      * 
-     * @return array
+     * @return string[]
      */
     public function getGroupBy(): array
     {
@@ -521,7 +524,7 @@ class QueryBuilder
     /**
      * Gets the having clause of a select query.
      * 
-     * @return array
+     * @return mixed[]
      */
     public function getHaving(): array
     {
@@ -574,8 +577,12 @@ class QueryBuilder
 
     /**
      * Starts building an insert query. This method resets or replaces the existing values.
+     * 
+     * @param string   $table
+     * @param string[] $values
+     * @return self
      */
-    public function insert(string $table, $values = [])
+    public function insert(string $table, $values = []): self
     {
         $this->type = self::INSERT;
         $this->from($table);
