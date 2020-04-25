@@ -573,7 +573,7 @@ class QueryBuilder
     }
 
     /**
-     * Starts building an insert query.
+     * Starts building an insert query. This method resets or replaces the existing values.
      */
     public function insert(string $table, $values = [])
     {
@@ -584,7 +584,7 @@ class QueryBuilder
     }
 
     /**
-     * Starts building an update query.
+     * Starts building an update query. This method resets or replaces the existing values.
      * 
      * @param string $table
      * @param array  $values Array with column names as keys.
@@ -604,9 +604,22 @@ class QueryBuilder
      * @param array $values Key value pairs of columns and values.
      * @return QueryBuilder
      */
-    public function values(array $values): self
+    public function setValues(array $values): self
     {
         $this->values = array_merge($this->values, $values);
+        return $this;
+    }
+
+    /**
+     * Set a value for an update or an insert query.
+     * 
+     * @param string $column
+     * @param string $value
+     * @return self
+     */
+    public function setValue($column, $value)
+    {
+        $this->values[$column] = $value;
         return $this;
     }
 

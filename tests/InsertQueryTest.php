@@ -9,7 +9,7 @@ class InsertQueryTest extends TestCase
     {
         $insert = new QueryBuilder();
         $insert->insert('users')
-            ->values([
+            ->setValues([
                 'username' => '?',
                 'forename' => '?',
                 'surname' => '?',

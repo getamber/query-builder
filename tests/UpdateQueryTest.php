@@ -9,7 +9,7 @@ class UpdateQueryTest extends TestCase
     {
         $update = new QueryBuilder();
         $update->update('users')
-            ->values([
+            ->setValues([
                 'forename' => '?',
                 'surname' => '?',
                 'email' => '?',
