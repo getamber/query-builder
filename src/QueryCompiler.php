@@ -12,6 +12,9 @@ class QueryCompiler
 {
     /**
      * Generates SQL from a QueryBuilder instance.
+     * 
+     * @param QueryBuilder $query
+     * @return string
      */
     public function getSQL(QueryBuilder $query): string
     {
@@ -35,6 +38,9 @@ class QueryCompiler
 
     /**
      * Generates the SQL for a select query.
+     * 
+     * @param QueryBuilder $query
+     * @return string
      */
     protected function getSQLForSelect(QueryBuilder $query): string
     {
@@ -183,6 +189,9 @@ class QueryCompiler
 
     /**
      * Generates the SQL for an insert query.
+     * 
+     * @param QueryBuilder $query
+     * @return string
      */
     protected function getSQLForInsert(QueryBuilder $query): string
     {
@@ -197,6 +206,9 @@ class QueryCompiler
 
     /**
      * Generates the SQL for an update query.
+     * 
+     * @param QueryBuilder $query
+     * @return string
      */
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
@@ -209,6 +221,9 @@ class QueryCompiler
 
     /**
      * Generates the SQL for a set clause of an update query.
+     * 
+     * @param array $values
+     * @return string
      */
     protected function getSQLForSetClause(array $values): string
     {
@@ -222,6 +237,9 @@ class QueryCompiler
 
     /**
      * Generates the SQL for a delete query.
+     * 
+     * @param QueryBuilder $query
+     * @return string
      */
     protected function getSQLForDelete(QueryBuilder $query): string
     {
