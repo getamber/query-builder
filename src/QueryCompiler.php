@@ -3,7 +3,7 @@
 namespace Amber\Components\QueryBuilder;
 
 /**
- * QueryBuilder object compiler.
+ * QueryBuilder compiler.
  * 
  * @author  Ken Lynch
  * @license MIT
@@ -50,7 +50,14 @@ class QueryCompiler
         $sql[] = $this->getSQLForOrderByClause($query->getOrderBy());
         $sql[] = $this->getSQLForLimitClause($query->getLimit(), $query->getOffset());
 
-        return join(' ', array_filter($sql));
+        $sql = join(' ', array_filter($sql));
+
+        if ($query->isSubquery()) {
+            $alias = $query->getAlias();
+            $sql = '('.$sql.')'. ($alias ? ' AS '.$alias : '');
+        }
+
+        return $sql;
     }
 
     protected function getSQLForInsert(QueryBuilder $query): string

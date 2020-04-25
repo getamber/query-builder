@@ -23,7 +23,8 @@ class QueryBuilder
     protected $compiler;
 
     protected $type;
-    protected $alias;
+    protected $subquery = false;
+    protected $alias    = null;
 
     protected $select   = [];
     protected $distinct = false;
@@ -40,16 +41,19 @@ class QueryBuilder
     /**
      * Initialises a new QueryBuilder
      * 
-     * @param Closure $build
      * @param string  $compiler
+     * @param Closure $build
+     * @param bool    $subquery  
      */
-    public function __construct(QueryCompiler $compiler = null, Closure $build = null)
+    public function __construct(QueryCompiler $compiler = null, Closure $builder = null, $subquery = false) 
     {
         $this->compiler = $compiler ?? new QueryCompiler();
 
-        if ($build) {
-            $this->alias = $build($this);
+        if ($builder) {
+            $this->alias = $builder($this);
         }
+
+        $this->subquery = $subquery;
     }
 
     /**
@@ -63,7 +67,27 @@ class QueryBuilder
     }
 
     /**
-     * Starts a select query.
+     * Checks whether this is a subquery.
+     * 
+     * @return bool
+     */
+    public function isSubquery()
+    {
+        return $this->subquery;
+    }
+
+    /**
+     * Gets the subquery alias.
+     * 
+     * @return string
+     */
+    public function getAlias()
+    {
+        return $this->alias;
+    }
+
+    /**
+     * Starts a select query and sets the columns.
      * 
      * @param $columns
      * 
@@ -87,18 +111,18 @@ class QueryBuilder
         $this->type = self::SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
-            if ($column instanceof Closure) {
-                $query = new static($this->compiler, $column);
-                return '('.$query.')'.($query->alias ? ' AS '.$query->alias : '');
-            } else {
-                return $column;
-            }
+            return $column instanceof Closure ? new static($this->compiler, $column, true) : $column;
         }, $columns);
         
         array_push($this->select, ...$columns);
         return $this;
     }
 
+    /**
+     * Gets the columns of a select query.
+     * 
+     * @return array
+     */
     public function getSelect(): array
     {
         return $this->select;
@@ -117,6 +141,11 @@ class QueryBuilder
         return $this;
     }
 
+    /**
+     * Checks whether a select query is distinct or not.
+     * 
+     * @return bool
+     */
     public function isDistinct(): bool
     {
         return $this->distinct;
@@ -125,18 +154,14 @@ class QueryBuilder
     /**
      * Sets the from clause of a select query.
      * 
-     * @param $from
+     * @param string|Closure $from
      * 
      * @return self
      */
     public function from($from): self
     {
-        if ($from instanceof Closure) {
-            $query = new static($this->compiler, $from);
-            $from = '('.$query.')'.($query->alias ? ' AS '.$query->alias : '');
-        }
+        $this->from = $from instanceof Closure ? new static($this->compiler, $from, true) : $from;
 
-        $this->from = $from;
         return $this;
     }
 
@@ -147,15 +172,8 @@ class QueryBuilder
 
     protected function addJoin($join, $table, $on)
     {
-        if ($table instanceof Closure) {
-            $query = new static($this->compiler, $table);
-            $table = '('.$query.')'.($query->alias ? ' AS '.$query->alias : '');
-        }
-
-        if ($on instanceof Closure) {
-            $query = new static($this->compiler, $on);
-            $on = '('.$query.')';
-        }
+        $table = $table instanceof Closure ? new static($this->compiler, $table, true) : $table;
+        $on = $on instanceof Closure ? new static($this->compiler, $on, true) : $on;
 
         $this->join[] = [$join, $table, $on];
     }
@@ -192,12 +210,7 @@ class QueryBuilder
     protected function addWhere(...$conditions)
     {
         $conditions = array_map(function ($part) {
-            if ($part instanceof Closure) {
-                $query = new static($this->compiler, $part);
-                return '('.$query.')';
-            } else {
-                return $part;
-            }
+            return $part instanceof Closure ? new static($this->compiler, $part, true) : $part;
         }, $conditions);
         
         $this->where[] = $conditions;
@@ -323,12 +336,7 @@ class QueryBuilder
     protected function addHaving(...$conditions)
     {
         $conditions = array_map(function ($part) {
-            if ($part instanceof Closure) {
-                $query = new static($this->compiler, $part);
-                return '('.$query.')';
-            } else {
-                return $part;
-            }
+            return $part instanceof Closure ? new static($this->compiler, $part, true) : $part;
         }, $conditions);
 
         array_push($this->having, ...$conditions);
