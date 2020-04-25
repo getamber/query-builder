@@ -5,7 +5,7 @@ namespace Amber\Components\QueryBuilder;
 use Closure;
 
 /**
- * Fluent query builder for creating SQL queries.
+ * Fluent SQL query builder.
  * 
  * @author  Ken Lynch
  * @license MIT
@@ -38,22 +38,26 @@ class QueryBuilder
     protected $offset   = 0;
     protected $values   = [];
 
+    protected static function createFromClosure(QueryCompiler $compiler, Closure $closure, $subquery = false)
+    {
+        $query = new static($compiler, $subquery);
+        $query->alias = $closure($query);
+
+        return $query;
+    }
+
     /**
      * Initialises a new QueryBuilder
      * 
      * @param string  $compiler
-     * @param Closure $build
-     * @param bool    $subquery  
+     * @param bool    $subquery
+     * @param string  $alias     
      */
-    public function __construct(QueryCompiler $compiler = null, Closure $builder = null, $subquery = false) 
+    public function __construct(QueryCompiler $compiler = null, $subquery = false, $alias = null) 
     {
         $this->compiler = $compiler ?? new QueryCompiler();
-
-        if ($builder) {
-            $this->alias = $builder($this);
-        }
-
         $this->subquery = $subquery;
+        $this->alias = $alias;
     }
 
     /**
@@ -64,6 +68,14 @@ class QueryBuilder
     public function getType()
     {
         return $this->type;
+    }
+
+    public function setSubquery(bool $subquery, string $alias): self
+    {
+        $this->subquery = $subquery;
+        $this->alias = $alias;
+
+        return $this;
     }
 
     /**
@@ -111,7 +123,7 @@ class QueryBuilder
         $this->type = self::SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
-            return $column instanceof Closure ? new static($this->compiler, $column, true) : $column;
+            return $column instanceof Closure ? static::createFromClosure($this->compiler, $column, true) : $column;
         }, $columns);
         
         array_push($this->select, ...$columns);
@@ -160,7 +172,7 @@ class QueryBuilder
      */
     public function from($from): self
     {
-        $this->from = $from instanceof Closure ? new static($this->compiler, $from, true) : $from;
+        $this->from = $from instanceof Closure ? static::createFromClosure($this->compiler, $from, true) : $from;
 
         return $this;
     }
@@ -172,8 +184,8 @@ class QueryBuilder
 
     protected function addJoin($join, $table, $on)
     {
-        $table = $table instanceof Closure ? new static($this->compiler, $table, true) : $table;
-        $on = $on instanceof Closure ? new static($this->compiler, $on, true) : $on;
+        $table = $table instanceof Closure ? static::createFromClosure($this->compiler, $table, true) : $table;
+        $on = $on instanceof Closure ? static::createFromClosure($this->compiler, $on, true) : $on;
 
         $this->join[] = [$join, $table, $on];
     }
@@ -210,7 +222,7 @@ class QueryBuilder
     protected function addWhere(...$conditions)
     {
         $conditions = array_map(function ($part) {
-            return $part instanceof Closure ? new static($this->compiler, $part, true) : $part;
+            return $part instanceof Closure ? static::createFromClosure($this->compiler, $part, true) : $part;
         }, $conditions);
         
         $this->where[] = $conditions;
@@ -336,7 +348,7 @@ class QueryBuilder
     protected function addHaving(...$conditions)
     {
         $conditions = array_map(function ($part) {
-            return $part instanceof Closure ? new static($this->compiler, $part, true) : $part;
+            return $part instanceof Closure ? static::createFromClosure($this->compiler, $part, true) : $part;
         }, $conditions);
 
         array_push($this->having, ...$conditions);
