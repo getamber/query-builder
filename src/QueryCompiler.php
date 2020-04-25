@@ -10,6 +10,9 @@ namespace Amber\Components\QueryBuilder;
  */
 class QueryCompiler
 {
+    /**
+     * Generates SQL from a QueryBuilder instance.
+     */
     public function getSQL(QueryBuilder $query): string
     {
         switch ($query->getType()) {
@@ -30,6 +33,9 @@ class QueryCompiler
         }
     }
 
+    /**
+     * Generates the SQL for a select query.
+     */
     protected function getSQLForSelect(QueryBuilder $query): string
     {
         $sql = ['SELECT'];
@@ -44,7 +50,7 @@ class QueryCompiler
             $sql[] = 'FROM '.$from;
         }
 
-        $sql[] = $this->getSQLForJoins($query->getJoin());
+        $sql[] = $this->getSQLForJoinClauses($query->getJoin());
         $sql[] = $this->getSQLForWhereClause($query->getWhere());
         $sql[] = $this->getSQLForGroupByClause($query->getGroupBy(), $query->getHaving());
         $sql[] = $this->getSQLForOrderByClause($query->getOrderBy());
@@ -60,53 +66,39 @@ class QueryCompiler
         return $sql;
     }
 
-    protected function getSQLForInsert(QueryBuilder $query): string
-    {
-        return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $query->getFrom(),
-            join(',', array_keys($query->getValues())),
-            join(',', $query->getValues())
-        );
-    }
-
-    protected function getSQLForUpdate(QueryBuilder $query): string
-    {
-        return sprintf('UPDATE %s SET %s %s',
-            $query->getFrom(),
-            join(',', array_map(function ($column, $value) {
-                return $column.'='.$value;
-            }, array_keys($query->getValues()), $query->getValues())),
-            $this->getSQLForWhereClause($query->getWhere())
-        );
-    }
-
-    protected function getSQLForDelete(QueryBuilder $query): string
-    {
-        return sprintf('DELETE FROM %s %s',
-            $query->getFrom(),
-            $this->getSQLForWhereClause($query->getWhere())
-        );
-    }
-
-    protected function getSQLForJoins($joins): string
+    /**
+     * Generates the SQL for the join clauses.
+     * 
+     * @param array $joins
+     * @return string
+     */
+    protected function getSQLForJoinClauses(array $joins): string
     {
         return join(' ', array_map(function ($join) {
-            return $this->getSQLForJoin(...$join);
+            return $this->getSQLForJoinClause(...$join);
         }, $joins));
     }
 
-    protected function getSQLForJoin($join, $table, $on): string
+    /**
+     * Generates the SQL for a single join clause.
+     * 
+     * @param string $join
+     * @param string $table
+     * @param string $on
+     * @return string
+     */
+    protected function getSQLForJoinClause(string $join, string $table, string $on): string
     {
-        $sql = $join.' '.$table;
-
-        if ($on) {
-            $sql .= ' ON '.$on;
-        }
-
-        return $sql;
+        return $join.' '.$table.($on ? ' ON '.$on : '');
     }
 
-    protected function getSQLForWhereClause($where): string
+    /**
+     * Generates the SQL for the where clause.
+     * 
+     * @param array $where
+     * @return string
+     */
+    protected function getSQLForWhereClause(array $where): string
     {
         if (!$where) {
             return '';
@@ -115,6 +107,12 @@ class QueryCompiler
         return 'WHERE '.$this->getSQLForConditions($where);
     }
 
+    /**
+     * Generates the SQL for conditions.
+     * 
+     * @param array $conditions
+     * @return string
+     */
     protected function getSQLForConditions(array $conditions): string
     {
         return join(' ', array_map(function ($parts) {
@@ -122,7 +120,13 @@ class QueryCompiler
         }, $conditions));
     }
 
-    protected function getSQLForOrderByClause($orderBy): string
+    /**
+     * Generates the SQL for the order by clause.
+     * 
+     * @param array $orderBy
+     * @return string
+     */
+    protected function getSQLForOrderByClause(array $orderBy): string
     {
         if (!$orderBy) {
             return '';
@@ -133,7 +137,14 @@ class QueryCompiler
         }, $orderBy));
     }
 
-    protected function getSQLForGroupByClause($groupBy, $having): string
+    /**
+     * Generates the SQL for the group by and having clause.
+     * 
+     * @param array $groupBy
+     * @param array $having
+     * @return string
+     */
+    protected function getSQLForGroupByClause(array $groupBy, array $having): string
     {
         if (!$groupBy) {
             return '';
@@ -148,7 +159,14 @@ class QueryCompiler
         return $sql;
     }
 
-    protected function getSQLForLimitClause($limit, $offset): string
+    /**
+     * Generates the SQL for the limit and offset clause.
+     * 
+     * @param int|null $limit
+     * @param int      $offset
+     * @return string
+     */
+    protected function getSQLForLimitClause(?int $limit, int $offset): string
     {
         $sql = [];
 
@@ -161,5 +179,55 @@ class QueryCompiler
         }
 
         return join(' ', $sql);
+    }
+
+    /**
+     * Generates the SQL for an insert query.
+     */
+    protected function getSQLForInsert(QueryBuilder $query): string
+    {
+        $values = $query->getValues();
+
+        return sprintf('INSERT INTO %s (%s) VALUES (%s)',
+            $query->getFrom(),
+            join(',', array_keys($values)),
+            join(',', $values)
+        );
+    }
+
+    /**
+     * Generates the SQL for an update query.
+     */
+    protected function getSQLForUpdate(QueryBuilder $query): string
+    {
+        return sprintf('UPDATE %s SET %s %s',
+            $query->getFrom(),
+            $this->getSQLForSetClause($query->getValues()),
+            $this->getSQLForWhereClause($query->getWhere())
+        );
+    }
+
+    /**
+     * Generates the SQL for a set clause of an update query.
+     */
+    protected function getSQLForSetClause(array $values): string
+    {
+        $keys = array_keys($values);
+        $set = array_map(function ($column, $value) {
+            return $column .'='.$value;
+        }, $keys, $values);
+
+        return join(',', $set);
+    }
+
+    /**
+     * Generates the SQL for a delete query.
+     */
+    protected function getSQLForDelete(QueryBuilder $query): string
+    {
+        return sprintf('DELETE FROM %s %s',
+            $query->getFrom(),
+            $this->getSQLForWhereClause($query->getWhere())
+        );
     }
 }
