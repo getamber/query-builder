@@ -9,7 +9,7 @@ class UpdateQueryTest extends TestCase
     {
         $update = new QueryBuilder();
         $update->update('users')
-            ->setValues([
+            ->set([
                 'forename' => '?',
                 'surname' => '?',
                 'email' => '?',
@@ -23,7 +23,7 @@ class UpdateQueryTest extends TestCase
     {
         $update = new QueryBuilder();
         $update->update('users AS u')
-            ->setValues([
+            ->set([
                 'forename' => function ($query) {
                     $query->select('forename')
                         ->from('customers AS c')

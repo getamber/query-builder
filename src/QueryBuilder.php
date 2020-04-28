@@ -3,6 +3,7 @@
 namespace Amber\Components\QueryBuilder;
 
 use Closure;
+use InvalidArgumentException;
 
 /**
  * Fluent SQL query builder.
@@ -36,6 +37,8 @@ class QueryBuilder
     protected $having   = [];
     protected $limit    = null;
     protected $offset   = 0;
+    protected $table    = null;
+    protected $columns  = [];
     protected $values   = [];
 
     /**
@@ -111,7 +114,7 @@ class QueryBuilder
     /**
      * Starts building a select query. This method replaces the existing select clause.
      * 
-     * @param $columns
+     * @param mixed $columns
      * @return self
      */
     public function select($columns): self
@@ -576,17 +579,17 @@ class QueryBuilder
     }
 
     /**
-     * Starts building an insert query. This method resets or replaces the existing values.
+     * Starts building an insert query. This method resets or replaces the existing query.
      * 
-     * @param string   $table
-     * @param string[] $values
+     * @param string $table
      * @return self
      */
-    public function insert(string $table, $values = []): self
+    public function insert(string $table): self
     {
         $this->type = self::INSERT;
-        $this->from($table);
-        $this->values = $values;
+        $this->table = $table;
+        $this->columns = [];
+        $this->values = [];
         return $this;
     }
 
@@ -594,53 +597,14 @@ class QueryBuilder
      * Starts building an update query. This method resets or replaces the existing values.
      * 
      * @param string $table
-     * @param array  $values Array with column names as keys.
      * @return self
      */
-    public function update(string $table, $values = []): self
+    public function update(string $table): self
     {
         $this->type = self::UPDATE;
-        $this->from($table);
-        $this->values = $values;
+        $this->table = $table;
+        $this->values = [];
         return $this;
-    }
-
-    /**
-     * Sets the values for an update or an insert query.
-     * 
-     * @param array $values Key value pairs of columns and values.
-     * @return QueryBuilder
-     */
-    public function setValues(array $values): self
-    {
-        foreach ($values as $column => $value) {
-            $this->setValue($column, $value);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Set a value for an update or an insert query.
-     * 
-     * @param string         $column
-     * @param string|Closure $value
-     * @return self
-     */
-    public function setValue(string $column, $value)
-    {
-        $this->values[$column] = $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
-        return $this;
-    }
-
-    /**
-     * Gets the values for an update or an insert query.
-     * 
-     * @return array
-     */
-    public function getValues(): array
-    {
-        return $this->values;
     }
 
     /**
@@ -652,8 +616,90 @@ class QueryBuilder
     public function delete(string $table)
     {
         $this->type = self::DELETE;
-        $this->from($table);
+        $this->table = $table;
         return $this;
+    }
+
+    /**
+     * Gets the table used in an insert, update or delete query.
+     * 
+     * @return string
+     */
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+
+    /**
+     * Sets the columns for an insert query.
+     * 
+     * @param array $columns
+     * @return self
+     */
+    public function columns($columns): self
+    {
+        $columns = is_array($columns) ? $columns : func_get_args();
+        $this->columns = $columns;
+        return $this;
+    }
+
+    /**
+     * Gets the columns for an insert query.
+     * 
+     * @return array
+     */
+    public function getColumns(): array
+    {
+        if ($this->columns) {
+            return $this->columns;
+        } elseif (is_array($this->values)) {
+            return array_filter(array_keys($this->values), 'is_string');
+        }
+        
+        return [];
+    }
+
+    /**
+     * Sets the values for an insert query.
+     * 
+     * @param array|Closure $values Key value pairs of columns and values.
+     * @return self
+     */
+    public function values($values): self
+    {
+        if (is_array($values)) {
+            $this->values = array_map(function ($value) {
+                return $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
+            }, $values);
+        } elseif ($values instanceof Closure) {
+            $this->values = static::createFromClosure($this->compiler, $values);
+        } else {
+            throw new InvalidArgumentException();
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the values for an update query.
+     * 
+     * @param array $values
+     * @return self
+     */
+    public function set(array $values): self
+    {
+        $this->values($values);
+        return $this;
+    }
+
+    /**
+     * Gets the values for an update or an insert query.
+     * 
+     * @return array|QueryBuilder
+     */
+    public function getValues()
+    {
+        return $this->values;
     }
 
     /**

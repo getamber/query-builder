@@ -139,7 +139,7 @@ class QueryCompiler
         }
 
         return 'ORDER BY '.join(',', array_map(function ($orderBy) {
-            return $orderBy[0].' '.$orderBy[1];
+            return join(' ', $orderBy);
         }, $orderBy));
     }
 
@@ -195,13 +195,38 @@ class QueryCompiler
      */
     protected function getSQLForInsert(QueryBuilder $query): string
     {
+        $sql[] = 'INSERT INTO '.$query->getTable();
+
         $values = $query->getValues();
 
-        return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $query->getFrom(),
-            join(',', array_keys($values)),
-            join(',', $values)
-        );
+        if ($values) {
+            $sql[] = $this->getSQLForColumns($query->getColumns());
+            $sql[] = $values instanceof QueryBuilder ? $values : $this->getSQLForValues($values);
+        }
+
+        return join(' ', array_filter($sql));
+    }
+
+    /**
+     * Generates the SQL for the columns of an insert query.
+     * 
+     * @param array $columns
+     * @return string
+     */
+    protected function getSQLForColumns(array $columns)
+    {
+        return $columns ? '('.join(',', $columns).')' : '';
+    }
+
+    /**
+     * Generates the SQL for the values clause of an insert query.
+     * 
+     * @param array $values
+     * @return string
+     */
+    protected function getSQLForValues(array $values)
+    {
+        return 'VALUES ('.join(',', $values).')';
     }
 
     /**
@@ -213,7 +238,7 @@ class QueryCompiler
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
         return trim(sprintf('UPDATE %s SET %s %s',
-            $query->getFrom(),
+            $query->getTable(),
             $this->getSQLForSetClause($query->getValues()),
             $this->getSQLForWhereClause($query->getWhere())
         ));
@@ -244,7 +269,7 @@ class QueryCompiler
     protected function getSQLForDelete(QueryBuilder $query): string
     {
         return sprintf('DELETE FROM %s %s',
-            $query->getFrom(),
+            $query->getTable(),
             $this->getSQLForWhereClause($query->getWhere())
         );
     }
