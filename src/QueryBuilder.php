@@ -613,20 +613,23 @@ class QueryBuilder
      */
     public function setValues(array $values): self
     {
-        $this->values = array_merge($this->values, $values);
+        foreach ($values as $column => $value) {
+            $this->setValue($column, $value);
+        }
+
         return $this;
     }
 
     /**
      * Set a value for an update or an insert query.
      * 
-     * @param string $column
-     * @param string $value
+     * @param string         $column
+     * @param string|Closure $value
      * @return self
      */
-    public function setValue($column, $value)
+    public function setValue(string $column, $value)
     {
-        $this->values[$column] = $value;
+        $this->values[$column] = $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
         return $this;
     }
 

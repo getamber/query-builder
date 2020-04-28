@@ -212,11 +212,11 @@ class QueryCompiler
      */
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
-        return sprintf('UPDATE %s SET %s %s',
+        return trim(sprintf('UPDATE %s SET %s %s',
             $query->getFrom(),
             $this->getSQLForSetClause($query->getValues()),
             $this->getSQLForWhereClause($query->getWhere())
-        );
+        ));
     }
 
     /**
@@ -227,10 +227,10 @@ class QueryCompiler
      */
     protected function getSQLForSetClause(array $values): string
     {
-        $keys = array_keys($values);
-        $set = array_map(function ($column, $value) {
-            return $column .'='.$value;
-        }, $keys, $values);
+        $set = [];
+        foreach ($values as $column => $value) {
+            $set[] = $column.'='.$value;
+        }
 
         return join(',', $set);
     }
