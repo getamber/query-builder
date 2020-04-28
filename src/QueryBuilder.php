@@ -39,6 +39,7 @@ class QueryBuilder
     protected $offset   = 0;
     protected $columns  = [];
     protected $values   = [];
+    protected $with     = [];
 
     /**
      * Creates a new QueryBuilder from a closure.
@@ -680,7 +681,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets an individual value for an insert or update query.
+     * Sets an individual value for an update query.
      * 
      * @param string         $column
      * @param string|Closure $value
@@ -700,6 +701,30 @@ class QueryBuilder
     public function getValues()
     {
         return $this->values;
+    }
+
+    /**
+     * Adds a with clause to the query.
+     * 
+     * @param string  $name
+     * @param Closure $query
+     * @param array   $columns
+     * @return self
+     */
+    public function with(string $name, Closure $query, $columns = []): self
+    {
+        $this->with[$name] = [static::createFromClosure($this->compiler, $query, true), $columns];
+        return $this;
+    }
+
+    /**
+     * Gets the with clause of the query.
+     * 
+     * @return array
+     */
+    public function getWith(): array
+    {
+        return $this->with;
     }
 
     /**

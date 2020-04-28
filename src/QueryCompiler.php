@@ -44,7 +44,7 @@ class QueryCompiler
      */
     protected function getSQLForSelect(QueryBuilder $query): string
     {
-        $sql = ['SELECT'];
+        $sql = [$this->getSQLForWithClause($query->getWith()), 'SELECT'];
 
         if ($query->isDistinct()) {
             $sql[] = 'DISTINCT';
@@ -237,7 +237,8 @@ class QueryCompiler
      */
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
-        return trim(sprintf('UPDATE %s SET %s %s',
+        return trim(sprintf('%s UPDATE %s SET %s %s',
+            $this->getSQLForWithClause($query->getWith()),
             $query->getFrom(),
             $this->getSQLForSetClause($query->getValues()),
             $this->getSQLForWhereClause($query->getWhere())
@@ -268,9 +269,34 @@ class QueryCompiler
      */
     protected function getSQLForDelete(QueryBuilder $query): string
     {
-        return sprintf('DELETE FROM %s %s',
+        return trim(sprintf('%s DELETE FROM %s %s',
+            $this->getSQLForWithClause($query->getWith()),
             $query->getFrom(),
             $this->getSQLForWhereClause($query->getWhere())
-        );
+        ));
+    }
+
+        /**
+     * Generates the SQL for a with clause.
+     * 
+     * @param array $withs
+     * @return string
+     */
+    protected function getSQLForWithClause(array $with): string
+    {
+        if (!$with) {
+            return '';
+        }
+
+        $sql = [];
+        foreach ($with as $name => list($query, $columns)) {
+            if ($columns) {
+                $sql[] = $name.' ('.join(',', $columns).') AS '.$query;
+            } else {
+                $sql[] = $name.' AS '.$query;
+            }
+        }
+
+        return 'WITH '.join(',', $sql);
     }
 }

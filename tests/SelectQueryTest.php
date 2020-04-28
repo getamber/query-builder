@@ -131,4 +131,13 @@ class SelectQueryTest extends TestCase
         })->from('table1 t1');
         $this->assertEquals('SELECT (SELECT COUNT(id) FROM table2) AS total,(SELECT MAX(created_at) FROM table2) AS maximum FROM table1 t1', (string) $query);
     }
+
+    public function testSelectWithWithClause()
+    {
+        $query = new QueryBuilder();
+        $query->with('alias', function ($query) {
+            $query->select('*')->from('table2')->where('domain = ?');
+        })->select('*')->from('alias');
+        $this->assertEquals('WITH alias AS (SELECT * FROM table2 WHERE domain = ?) SELECT * FROM alias', (string) $query);
+    }
 }
