@@ -195,7 +195,7 @@ class QueryCompiler
      */
     protected function getSQLForInsert(QueryBuilder $query): string
     {
-        $sql[] = 'INSERT INTO '.$query->getTable();
+        $sql[] = 'INSERT INTO '.$query->getFrom();
 
         $values = $query->getValues();
 
@@ -238,7 +238,7 @@ class QueryCompiler
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
         return trim(sprintf('UPDATE %s SET %s %s',
-            $query->getTable(),
+            $query->getFrom(),
             $this->getSQLForSetClause($query->getValues()),
             $this->getSQLForWhereClause($query->getWhere())
         ));
@@ -269,7 +269,7 @@ class QueryCompiler
     protected function getSQLForDelete(QueryBuilder $query): string
     {
         return sprintf('DELETE FROM %s %s',
-            $query->getTable(),
+            $query->getFrom(),
             $this->getSQLForWhereClause($query->getWhere())
         );
     }

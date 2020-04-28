@@ -37,7 +37,6 @@ class QueryBuilder
     protected $having   = [];
     protected $limit    = null;
     protected $offset   = 0;
-    protected $table    = null;
     protected $columns  = [];
     protected $values   = [];
 
@@ -587,9 +586,7 @@ class QueryBuilder
     public function insert(string $table): self
     {
         $this->type = self::INSERT;
-        $this->table = $table;
-        $this->columns = [];
-        $this->values = [];
+        $this->from($table);
         return $this;
     }
 
@@ -602,8 +599,7 @@ class QueryBuilder
     public function update(string $table): self
     {
         $this->type = self::UPDATE;
-        $this->table = $table;
-        $this->values = [];
+        $this->from($table);
         return $this;
     }
 
@@ -616,18 +612,8 @@ class QueryBuilder
     public function delete(string $table)
     {
         $this->type = self::DELETE;
-        $this->table = $table;
+        $this->from($table);
         return $this;
-    }
-
-    /**
-     * Gets the table used in an insert, update or delete query.
-     * 
-     * @return string
-     */
-    public function getTable(): string
-    {
-        return $this->table;
     }
 
     /**
@@ -660,35 +646,49 @@ class QueryBuilder
     }
 
     /**
-     * Sets the values for an insert query.
+     * Sets multiple values for an insert query.
      * 
      * @param array|Closure $values Key value pairs of columns and values.
      * @return self
      */
     public function values($values): self
     {
-        if (is_array($values)) {
-            $this->values = array_map(function ($value) {
-                return $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
-            }, $values);
-        } elseif ($values instanceof Closure) {
+        if ($values instanceof Closure) {
             $this->values = static::createFromClosure($this->compiler, $values);
         } else {
-            throw new InvalidArgumentException();
+            $this->values = is_array($values) ? $values : func_get_args();
         }
 
         return $this;
     }
 
     /**
-     * Sets the values for an update query.
+     * Sets multiple values for an update query.
      * 
      * @param array $values
      * @return self
      */
     public function set(array $values): self
     {
-        $this->values($values);
+        $this->values = [];
+
+        foreach ($values as $column => $value) {
+            $this->setValue($column, $value);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets an individual value for an insert or update query.
+     * 
+     * @param string         $column
+     * @param string|Closure $value
+     * @return self
+     */
+    public function setValue(string $column, $value)
+    {
+        $this->values[$column] = $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
         return $this;
     }
 
