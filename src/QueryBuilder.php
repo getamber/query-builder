@@ -25,7 +25,7 @@ class QueryBuilder
 
     protected $type;
     protected $subquery = false;
-    protected $alias    = null;
+    protected $alias;
 
     protected $select   = [];
     protected $distinct = false;
@@ -42,21 +42,6 @@ class QueryBuilder
     protected $with     = [];
 
     /**
-     * Creates a new QueryBuilder from a closure.
-     * 
-     * @param QueryCompiler $compiler
-     * @param Closure       $closure  A closure to build the query and return an alias.
-     * @param bool          $subquery Whether or not to create a subquery.
-     */
-    protected static function createFromClosure(QueryCompiler $compiler, Closure $closure, $subquery = false)
-    {
-        $query = new static($compiler);
-        $query->setSubquery($subquery, $closure($query));
-
-        return $query;
-    }
-
-    /**
      * Initialises a new QueryBuilder
      * 
      * @param QueryCompiler|null $compiler
@@ -69,26 +54,11 @@ class QueryBuilder
     /**
      * Gets the query type.
      * 
-     * @return string The query type.
+     * @return string|null The query type.
      */
-    public function getType()
+    public function getType(): ?string
     {
         return $this->type;
-    }
-
-    /**
-     * Sets whether or not the query is a subquery.
-     * 
-     * @param bool   $subquery
-     * @param string $alias
-     * @return self
-     */
-    public function setSubquery(bool $subquery, string $alias = null): self
-    {
-        $this->subquery = $subquery;
-        $this->alias = $alias;
-
-        return $this;
     }
 
     /**
@@ -96,7 +66,7 @@ class QueryBuilder
      * 
      * @return bool
      */
-    public function isSubquery()
+    public function isSubquery(): bool
     {
         return $this->subquery;
     }
@@ -106,7 +76,7 @@ class QueryBuilder
      * 
      * @return string
      */
-    public function getAlias()
+    public function getAlias(): ?string
     {
         return $this->alias;
     }
@@ -134,7 +104,7 @@ class QueryBuilder
         $this->type = self::SELECT;
         $columns = is_array($columns) ? $columns : func_get_args();
         $columns = array_map(function ($column) {
-            return $column instanceof Closure ? static::createFromClosure($this->compiler, $column, true) : $column;
+            return $column instanceof Closure ? $this->newFromClosure($column, true) : $column;
         }, $columns);
         
         array_push($this->select, ...$columns);
@@ -181,7 +151,7 @@ class QueryBuilder
      */
     public function from($from): self
     {
-        $this->from = $from instanceof Closure ? static::createFromClosure($this->compiler, $from, true) : $from;
+        $this->from = $from instanceof Closure ? $this->newFromClosure($from, true) : $from;
 
         return $this;
     }
@@ -205,8 +175,8 @@ class QueryBuilder
      */
     protected function addJoin(string $join, $table, $on = null)
     {
-        $table = $table instanceof Closure ? static::createFromClosure($this->compiler, $table, true) : $table;
-        $on = $on instanceof Closure ? static::createFromClosure($this->compiler, $on, true) : $on;
+        $table = $table instanceof Closure ? $this->newFromClosure($table, true) : $table;
+        $on = $on instanceof Closure ? $this->newFromClosure($on, true) : $on;
 
         $this->join[] = [$join, $table, $on];
     }
@@ -293,7 +263,7 @@ class QueryBuilder
     protected function addWhere($condition)
     {
         $condition = array_map(function ($part) {
-            return $part instanceof Closure ? static::createFromClosure($this->compiler, $part, true) : $part;
+            return $part instanceof Closure ? $this->newFromClosure($part, true) : $part;
         }, func_get_args());
         
         $this->where[] = $condition;
@@ -477,7 +447,7 @@ class QueryBuilder
     protected function addHaving($condition)
     {
         $condition = array_map(function ($part) {
-            return $part instanceof Closure ? static::createFromClosure($this->compiler, $part, true) : $part;
+            return $part instanceof Closure ? $this->newFromClosure($part, true) : $part;
         }, func_get_args());
 
         array_push($this->having, ...func_get_args());
@@ -655,7 +625,7 @@ class QueryBuilder
     public function values($values): self
     {
         if ($values instanceof Closure) {
-            $this->values = static::createFromClosure($this->compiler, $values);
+            $this->values = $this->newFromClosure($values);
         } else {
             $this->values = is_array($values) ? $values : func_get_args();
         }
@@ -689,7 +659,7 @@ class QueryBuilder
      */
     public function setValue(string $column, $value)
     {
-        $this->values[$column] = $value instanceof Closure ? static::createFromClosure($this->compiler, $value, true) : $value;
+        $this->values[$column] = $value instanceof Closure ? $this->newFromClosure($value, true) : $value;
         return $this;
     }
 
@@ -713,7 +683,7 @@ class QueryBuilder
      */
     public function with(string $name, Closure $query, $columns = []): self
     {
-        $this->with[$name] = [static::createFromClosure($this->compiler, $query, true), $columns];
+        $this->with[$name] = [$this->newFromClosure($query, true), $columns];
         return $this;
     }
 
@@ -725,6 +695,22 @@ class QueryBuilder
     public function getWith(): array
     {
         return $this->with;
+    }
+
+    /**
+     * Create a new QueryBuilder from a closure
+     * 
+     * @param Closure $closure
+     * @param bool    $subquery
+     * @return self
+     */
+    protected function newFromClosure(Closure $closure, $subquery = false): self
+    {
+        $query = new static($this->compiler);
+        $query->subquery = $subquery;
+        $query->alias = $closure($query);
+
+        return $query;
     }
 
     /**

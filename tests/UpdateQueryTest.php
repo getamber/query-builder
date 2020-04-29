@@ -33,4 +33,17 @@ class UpdateQueryTest extends TestCase
         ;
         $this->assertEquals('UPDATE users AS u SET forename=(SELECT forename FROM customers AS c WHERE c.email = u.email)', (string) $update);
     }
+
+    public function testUpdateWithWithClause()
+    {
+        $update = new QueryBuilder();
+        $update->with('import', function ($query) {
+            $query->select('*')->from('import')->where('batch_id = ?');
+        })->update('users')->set([
+            'email' => '?',
+            'forename' => '?',
+            'surname' => '?',
+        ]);
+        $this->assertEquals('WITH import AS (SELECT * FROM import WHERE batch_id = ?) UPDATE users SET email=?,forename=?,surname=?', (string) $update);
+    }
 }
