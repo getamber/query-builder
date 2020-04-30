@@ -33,6 +33,7 @@ class QueryBuilder
     protected $from     = null;
     protected $joins    = [];
     protected $where    = [];
+    protected $unions   = [];
     protected $orderBy  = [];
     protected $groupBy  = [];
     protected $having   = [];
@@ -244,6 +245,29 @@ class QueryBuilder
     public function getWhere(): array
     {
         return $this->where;
+    }
+
+    /**
+     * Adds a union clause.
+     * 
+     * @param Closure $query
+     * @param bool    $all
+     * @return self
+     */
+    public function union(Closure $query, $all = false): self
+    {
+        $this->unions[] = [$this->newFromClosure($query, false), $all];
+        return $this;
+    }
+
+    /**
+     * Gets the union clauses.
+     * 
+     * @return array
+     */
+    public function getUnions()
+    {
+        return $this->unions;
     }
 
     /**

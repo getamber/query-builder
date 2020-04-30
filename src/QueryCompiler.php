@@ -37,7 +37,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for a select statement.
+     * Generates SQL for a select.
      * 
      * @param QueryBuilder $query
      * @return string
@@ -58,6 +58,7 @@ class QueryCompiler
 
         $sql[] = $this->getSQLForJoins($query->getJoins());
         $sql[] = $this->getSQLForWhere($query->getWhere());
+        $sql[] = $this->getSQLForUnions($query->getUnions());
         $sql[] = $this->getSQLForGroupBy($query->getGroupBy(), $query->getHaving());
         $sql[] = $this->getSQLForOrderBy($query->getOrderBy());
         $sql[] = $this->getSQLForLimit($query->getLimit(), $query->getOffset());
@@ -73,7 +74,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for the join clauses of a select statement.
+     * Generates SQL for an array of join clauses.
      * 
      * @param array $joins
      * @return string
@@ -86,7 +87,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for a single join clause.
+     * Generates SQL for a single join.
      * 
      * @param string      $join
      * @param string      $table
@@ -99,7 +100,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for a where clause.
+     * Generates SQL for a where clause.
      * 
      * @param array $where
      * @return string
@@ -114,7 +115,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for conditions.
+     * Generates SQL for an array of conditions.
      * 
      * @param array $conditions
      * @return string
@@ -122,6 +123,31 @@ class QueryCompiler
     public function getSQLForConditions(array $conditions): string
     {
         return join(' ', $conditions);
+    }
+
+    /**
+     * Generates SQL for an array of union clauses.
+     * 
+     * @param array $unions
+     * @return string
+     */
+    public function getSQLForUnions(array $unions): string
+    {
+        return join(' ', array_map(function ($union) {
+            return $this->getSQLForUnion(...$union);
+        }, $unions));
+    }
+
+    /**
+     * Generates SQL for a single union clause.
+     * 
+     * @param QueryBuilder $query
+     * @param bool         $all
+     * @return string
+     */
+    public function getSQLForUnion(QueryBuilder $query, bool $all)
+    {
+        return 'UNION'.($all ? ' ALL ' : ' ').$query;
     }
 
     /**

@@ -135,4 +135,23 @@ class SelectTest extends TestCase
             $query->getSQL()
         );
     }
+
+    public function testSelectWithRecursiveWith()
+    {
+        $query = new QueryBuilder();
+        $query->with('employee_tree', function ($query) {
+            $query->select('e0.EmployeeId', 'e0.ReportsTo', '0 AS Level')
+                ->from('employees AS e0')
+                ->where('e0.ReportsTo IS NULL')
+                ->union(function ($query) {
+                    $query->select('e1.EmployeeId', 'e1.ReportsTo', 'Level + 1')
+                        ->from('employees AS e1')
+                        ->join(QueryBuilder::JOIN_INNER, 'employee_tree AS et', 'et.EmployeeId = e1.ReportsTo');
+                });
+        })->select('*')->from('employee_tree');
+        $this->assertEquals(
+            'WITH employee_tree AS (SELECT e0.EmployeeId,e0.ReportsTo,0 AS Level FROM employees AS e0 WHERE e0.ReportsTo IS NULL UNION SELECT e1.EmployeeId,e1.ReportsTo,Level + 1 FROM employees AS e1 INNER JOIN employee_tree AS et ON et.EmployeeId = e1.ReportsTo) SELECT * FROM employee_tree',
+            $query->getSQL()
+        );
+    }
 }
