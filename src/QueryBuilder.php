@@ -2,6 +2,10 @@
 
 namespace Amber\Components\QueryBuilder;
 
+use Amber\Components\QueryBuilder\Traits\HavingHelpers;
+use Amber\Components\QueryBuilder\Traits\JoinHelpers;
+use Amber\Components\QueryBuilder\Traits\UnionHelpers;
+use Amber\Components\QueryBuilder\Traits\WhereHelpers;
 use Closure;
 use InvalidArgumentException;
 
@@ -13,6 +17,11 @@ use InvalidArgumentException;
  */
 class QueryBuilder
 {
+    use WhereHelpers,
+        JoinHelpers,
+        UnionHelpers,
+        HavingHelpers;
+
     const SELECT = 'SELECT';
     const INSERT = 'INSERT';
     const UPDATE = 'UPDATE';
@@ -29,7 +38,10 @@ class QueryBuilder
     protected $compiler;
 
     protected $type;
+    protected $subquery = false;
+    protected $withs    = [];
     protected $select   = [];
+    protected $distinct = false;
     protected $from     = null;
     protected $joins    = [];
     protected $where    = [];
@@ -38,12 +50,9 @@ class QueryBuilder
     protected $groupBy  = [];
     protected $having   = [];
     protected $limit    = null;
-    protected $offset   = 0;
-    protected $distinct = false;
-    protected $subquery = false;
+    protected $offset   = 0;    
     protected $columns  = [];
     protected $values   = [];
-    protected $withs    = [];
 
     /**
      * Initialises a new QueryBuilder
@@ -123,24 +132,27 @@ class QueryBuilder
     }
 
     /**
-     * Sets the query to return distinct rows.
+     * Adds a with clause.
      * 
+     * @param string  $name
+     * @param Closure $query
+     * @param array   $columns
      * @return self
      */
-    public function distinct(): self
+    public function addWith(string $name, Closure $query, $columns = []): self
     {
-        $this->distinct = true;
+        $this->withs[$name] = [$this->newFromClosure($query, true), $columns];
         return $this;
     }
 
     /**
-     * Checks whether or not the query returns distinct rows.
+     * Gets the with clauses of the query.
      * 
-     * @return bool
+     * @return array
      */
-    public function isDistinct(): bool
+    public function getWiths(): array
     {
-        return $this->distinct;
+        return $this->withs;
     }
 
     /**
@@ -182,6 +194,27 @@ class QueryBuilder
     public function getSelect(): array
     {
         return $this->select;
+    }
+
+    /**
+     * Sets the query to return distinct rows.
+     * 
+     * @return self
+     */
+    public function distinct(): self
+    {
+        $this->distinct = true;
+        return $this;
+    }
+
+    /**
+     * Checks whether or not the query returns distinct rows.
+     * 
+     * @return bool
+     */
+    public function isDistinct(): bool
+    {
+        return $this->distinct;
     }
 
     /**
@@ -556,30 +589,6 @@ class QueryBuilder
     public function getValues()
     {
         return $this->values;
-    }
-
-    /**
-     * Adds a with clause.
-     * 
-     * @param string  $name
-     * @param Closure $query
-     * @param array   $columns
-     * @return self
-     */
-    public function addWith(string $name, Closure $query, $columns = []): self
-    {
-        $this->withs[$name] = [$this->newFromClosure($query, true), $columns];
-        return $this;
-    }
-
-    /**
-     * Gets the with clauses of the query.
-     * 
-     * @return array
-     */
-    public function getWiths(): array
-    {
-        return $this->withs;
     }
 
     /**

@@ -6,91 +6,58 @@ use Closure;
 
 trait WhereHelpers
 {
-       /**
-     * Begins a where clause. This method replaces the existing where clause.
-     * 
-     * @param string|Closure $condition
-     * @return self
-     */
-    public function where($condition): self
-    {
-        $this->where = [];
-        $this->addWhere(...func_get_args());
-        return $this;
-    }
-
     public function whereNot($condition): self
     {
-        $this->where = [];
-        $this->addWhere('NOT', ...func_get_args());
-        return $this;
+        return $this->where('NOT', ...func_get_args());
     }
 
     public function andWhere($condition): self
     {
-        $this->addWhere('AND', ...func_get_args());
-        return $this;
+        return $this->addWhere('AND', ...func_get_args());
     }
 
     public function andWhereNot($condition): self
     {
-        $this->addWhere('AND NOT', ...func_get_args());
-        return $this;
+        return $this->addWhere('AND NOT', ...func_get_args());
     }
 
     public function orWhere($condition): self
     {
-        $this->addWhere('OR', ...func_get_args());
-        return $this;
+        return $this->addWhere('OR', ...func_get_args());
     }
 
     public function orWhereNot($condition): self
     {
-        $this->addWhere('OR NOT', ...func_get_args());
-        return $this;
+        return $this->addWhere('OR NOT', ...func_get_args());
     }
 
-    /**
-     * Adds an exists condition to a where clause.
-     * 
-     * @param Closure $subquery
-     * @return self
-     */
     public function whereExists(Closure $subquery): self
     {
-        $this->where = [];
-        $this->addWhere('EXISTS', $subquery);
-        return $this;
+        return $this->where('EXISTS', $subquery);
     }
 
     public function whereNotExists(Closure $subquery): self
     {
-        $this->where = [];
-        $this->addWhere('NOT EXISTS', $subquery);
-        return $this;
+        return $this->where('NOT EXISTS', $subquery);
     }
 
     public function andWhereExists(Closure $subquery): self
     {
-        $this->addWhere('AND EXISTS', $subquery);
-        return $this;
+        return $this->addWhere('AND EXISTS', $subquery);
     }
 
     public function andWhereNotExists(Closure $subquery): self
     {
-        $this->addWhere('AND NOT EXISTS', $subquery);
-        return $this;
+        return $this->addWhere('AND NOT EXISTS', $subquery);
     }
 
     public function orWhereExists(Closure $subquery): self
     {
-        $this->addWhere('OR EXISTS', $subquery);
-        return $this;
+        return $this->addWhere('OR EXISTS', $subquery);
     }
 
     public function orWhereNotExists(Closure $builder)
     {
-        $this->addWhere('OR NOT EXISTS', $builder);
-        return $this;
+        return $this->addWhere('OR NOT EXISTS', $builder);
     }
 }
