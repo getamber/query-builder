@@ -55,6 +55,16 @@ class QueryBuilder
         $this->compiler = $compiler ?? new QueryCompiler();
     }
 
+    public static function and(...$conditions)
+    {
+        return '('.join(' AND ', $conditions).')';
+    }
+
+    public static function or(...$conditions)
+    {
+        return '('.join(' OR ', $conditions).')';
+    }
+
     /**
      * Create a new QueryBuilder from a closure
      * 
@@ -199,15 +209,17 @@ class QueryBuilder
     /**
      * Adds a join clause.
      * 
-     * @param string         $type  The type of join.
-     * @param string|Closure $table The table or subquery to join with.
-     * @param string|Closure $on    The on condition of the join.
+     * @param string             $type  The type of join.
+     * @param string|Closure     $table The table or subquery to join with.
+     * @param (string|Closure)[] $on    The on condition of the join.
      * @return self
      */
-    public function join(string $type, $table, $on = null): self
+    public function addJoin(string $type, $table, ...$on): self
     {
         $table = $table instanceof Closure ? $this->newFromClosure($table, true) : $table;
-        $on = $on instanceof Closure ? $this->newFromClosure($on, true) : $on;
+        $on = array_map(function ($on) {
+            return $on instanceof Closure ? $this->newFromClosure($on, true) : $on;
+        }, $on);
 
         $this->joins[] = [$type, $table, $on];
         return $this;
@@ -268,7 +280,7 @@ class QueryBuilder
      * @param bool    $all
      * @return self
      */
-    public function union(Closure $query, $all = false): self
+    public function addUnion(Closure $query, $all = false): self
     {
         $this->unions[] = [$this->newFromClosure($query, false), $all];
         return $this;
@@ -554,7 +566,7 @@ class QueryBuilder
      * @param array   $columns
      * @return self
      */
-    public function with(string $name, Closure $query, $columns = []): self
+    public function addWith(string $name, Closure $query, $columns = []): self
     {
         $this->withs[$name] = [$this->newFromClosure($query, true), $columns];
         return $this;

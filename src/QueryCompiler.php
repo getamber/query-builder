@@ -91,11 +91,12 @@ class QueryCompiler
      * 
      * @param string      $join
      * @param string      $table
-     * @param string|null $on
+     * @param array|null $on
      * @return string
      */
-    public function getSQLForJoin(string $join, string $table, $on): string
+    public function getSQLForJoin(string $join, string $table, ?array $on): string
     {
+        $on = $this->getSQLForConditions($on);
         return $join.' '.$table.($on ? ' ON '.$on : '');
     }
 

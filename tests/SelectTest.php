@@ -46,7 +46,7 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
         ;
         $this->assertEquals(
             'SELECT albums.Title,artists.Name FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId',
@@ -59,7 +59,7 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
             ->where('artists.ArtistId = ?')
         ;
         $this->assertEquals(
@@ -73,7 +73,7 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
             ->orderBy([
                 'artists.Name' => QueryBuilder::SORT_ASC,
                 'albums.Title' => QueryBuilder::SORT_ASC,
@@ -90,7 +90,7 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'artists', 'albums.ArtistId = artists.ArtistId')
             ->where('artists.ArtistId = ?')
             ->orderBy([
                 'artists.Name' => QueryBuilder::SORT_ASC,
@@ -108,9 +108,9 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name', 'COUNT(invoice_items.TrackId) AS Sales')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_INNER, 'tracks', 'tracks.AlbumId = albums.AlbumId')
-            ->join(QueryBuilder::JOIN_LEFT, 'invoice_items', 'invoice_items.TrackId = tracks.TrackId')
-            ->join(QueryBuilder::JOIN_INNER, 'artists', 'artists.ArtistId = albums.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_INNER, 'tracks', 'tracks.AlbumId = albums.AlbumId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'invoice_items', 'invoice_items.TrackId = tracks.TrackId')
+            ->addJoin(QueryBuilder::JOIN_INNER, 'artists', 'artists.ArtistId = albums.ArtistId')
             ->groupBy('albums.Title')
         ;
         $this->assertEquals(
@@ -124,9 +124,9 @@ class SelectTest extends TestCase
         $query = new QueryBuilder();
         $query->select('albums.Title', 'artists.Name', 'COUNT(invoice_items.TrackId) AS Sales')
             ->from('albums')
-            ->join(QueryBuilder::JOIN_INNER, 'tracks', 'tracks.AlbumId = albums.AlbumId')
-            ->join(QueryBuilder::JOIN_LEFT, 'invoice_items', 'invoice_items.TrackId = tracks.TrackId')
-            ->join(QueryBuilder::JOIN_INNER, 'artists', 'artists.ArtistId = albums.ArtistId')
+            ->addJoin(QueryBuilder::JOIN_INNER, 'tracks', 'tracks.AlbumId = albums.AlbumId')
+            ->addJoin(QueryBuilder::JOIN_LEFT, 'invoice_items', 'invoice_items.TrackId = tracks.TrackId')
+            ->addJoin(QueryBuilder::JOIN_INNER, 'artists', 'artists.ArtistId = albums.ArtistId')
             ->groupBy('albums.Title')
             ->having('Sales = 0')
         ;
@@ -139,14 +139,14 @@ class SelectTest extends TestCase
     public function testSelectWithRecursiveWith()
     {
         $query = new QueryBuilder();
-        $query->with('employee_tree', function ($query) {
+        $query->addWith('employee_tree', function ($query) {
             $query->select('e0.EmployeeId', 'e0.ReportsTo', '0 AS Level')
                 ->from('employees AS e0')
                 ->where('e0.ReportsTo IS NULL')
-                ->union(function ($query) {
+                ->addUnion(function ($query) {
                     $query->select('e1.EmployeeId', 'e1.ReportsTo', 'Level + 1')
                         ->from('employees AS e1')
-                        ->join(QueryBuilder::JOIN_INNER, 'employee_tree AS et', 'et.EmployeeId = e1.ReportsTo');
+                        ->addJoin(QueryBuilder::JOIN_INNER, 'employee_tree AS et', 'et.EmployeeId = e1.ReportsTo');
                 });
         })->select('*')->from('employee_tree');
         $this->assertEquals(
