@@ -227,13 +227,27 @@ class QueryBuilder
      * Sets the where clause.
      * 
      * @param string|Closure $condition
+     * @return self
      */
     public function where($condition): self
     {
-        $this->where = array_map(function ($condition) {
+        $this->where = [];
+        $this->addWhere(...func_get_args());
+        return $this;
+    }
+
+    /**
+     * Adds to a where clause.
+     * 
+     * @param string|Closure $condition
+     * @return self
+     */
+    public function addWhere($condition): self
+    {
+        $where = array_map(function ($condition) {
             return $condition instanceof Closure ? $this->newFromClosure($condition, true) : $condition;
         }, func_get_args());
-        
+        array_push($this->where, ...$where);
         return $this;
     }
 
@@ -348,13 +362,27 @@ class QueryBuilder
      * Sets the having clause.
      * 
      * @param string|Closure $condition
+     * @return self
      */
     public function having($condition): self
     {
-        $this->having = array_map(function ($condition) {
+        $this->having = [];
+        $this->addHaving(...func_get_args());
+        return $this;
+    }
+
+    /**
+     * Adds to a having clause.
+     * 
+     * @param string|Closure $condition
+     * @return self
+     */
+    public function addHaving($condition): self
+    {
+        $having = array_map(function ($condition) {
             return $condition instanceof Closure ? $this->newFromClosure($condition, true) : $condition;
         }, func_get_args());
-
+        array_push($this->having, ...$having);
         return $this;
     }
 
