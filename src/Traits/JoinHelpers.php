@@ -11,10 +11,9 @@ trait JoinHelpers
      * @param string|Closure $on    The on condition of the join.
      * @return self
      */
-    public function join($table, $on): self
+    public function join($table, ...$on): self
     {
-        $this->innerJoin($table, $on);
-        return $this;
+        return $this->innerJoin($table, ...$on);
     }
 
     /**
@@ -24,10 +23,9 @@ trait JoinHelpers
      * @param string|Closure $on    The on condition of the join.
      * @return self
      */
-    public function innerJoin($table, $on): self
+    public function innerJoin($table, ...$on): self
     {
-        $this->addJoin('INNER JOIN', $table, $on);
-        return $this;
+        return $this->addJoin('INNER JOIN', $table, ...$on);
     }
 
     /**
@@ -37,10 +35,9 @@ trait JoinHelpers
      * @param string|Closure $on    The on condition of the join.
      * @return self
      */
-    public function leftJoin($table, $on): self
+    public function leftJoin($table, ...$on): self
     {
-        $this->addJoin('LEFT JOIN', $table, $on);
-        return $this;
+        return $this->addJoin('LEFT JOIN', $table, ...$on);
     }
 
     /**
@@ -50,10 +47,9 @@ trait JoinHelpers
      * @param string|Closure $on    The on condition of the join.
      * @return self
      */
-    public function rightJoin($table, $on): self
+    public function rightJoin($table, ...$on): self
     {
-        $this->addJoin('RIGHT JOIN', $table, $on);
-        return $this;
+        return $this->addJoin('RIGHT JOIN', $table, ...$on);
     }
 
     /**
