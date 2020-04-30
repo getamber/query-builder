@@ -37,14 +37,14 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for a select query.
+     * Generates the SQL for a select statement.
      * 
      * @param QueryBuilder $query
      * @return string
      */
     protected function getSQLForSelect(QueryBuilder $query): string
     {
-        $sql = [$this->getSQLForWithClause($query->getWith()), 'SELECT'];
+        $sql = [$this->getSQLForWith($query->getWith()), 'SELECT'];
 
         if ($query->isDistinct()) {
             $sql[] = 'DISTINCT';
@@ -56,11 +56,11 @@ class QueryCompiler
             $sql[] = 'FROM '.$from;
         }
 
-        $sql[] = $this->getSQLForJoinClauses($query->getJoin());
-        $sql[] = $this->getSQLForWhereClause($query->getWhere());
-        $sql[] = $this->getSQLForGroupByClause($query->getGroupBy(), $query->getHaving());
-        $sql[] = $this->getSQLForOrderByClause($query->getOrderBy());
-        $sql[] = $this->getSQLForLimitClause($query->getLimit(), $query->getOffset());
+        $sql[] = $this->getSQLForJoins($query->getJoins());
+        $sql[] = $this->getSQLForWhere($query->getWhere());
+        $sql[] = $this->getSQLForGroupBy($query->getGroupBy(), $query->getHaving());
+        $sql[] = $this->getSQLForOrderBy($query->getOrderBy());
+        $sql[] = $this->getSQLForLimit($query->getLimit(), $query->getOffset());
 
         $sql = join(' ', array_filter($sql));
 
@@ -73,15 +73,15 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for the join clauses.
+     * Generates the SQL for the join clauses of a select statement.
      * 
      * @param array $joins
      * @return string
      */
-    protected function getSQLForJoinClauses(array $joins): string
+    protected function getSQLForJoins(array $joins): string
     {
         return join(' ', array_map(function ($join) {
-            return $this->getSQLForJoinClause(...$join);
+            return $this->getSQLForJoin(...$join);
         }, $joins));
     }
 
@@ -93,18 +93,18 @@ class QueryCompiler
      * @param string $on
      * @return string
      */
-    protected function getSQLForJoinClause(string $join, string $table, string $on): string
+    protected function getSQLForJoin(string $join, string $table, string $on): string
     {
         return $join.' '.$table.($on ? ' ON '.$on : '');
     }
 
     /**
-     * Generates the SQL for the where clause.
+     * Generates the SQL for a where clause.
      * 
      * @param array $where
      * @return string
      */
-    protected function getSQLForWhereClause(array $where): string
+    protected function getSQLForWhere(array $where): string
     {
         if (!$where) {
             return '';
@@ -132,7 +132,7 @@ class QueryCompiler
      * @param array $orderBy
      * @return string
      */
-    protected function getSQLForOrderByClause(array $orderBy): string
+    protected function getSQLForOrderBy(array $orderBy): string
     {
         if (!$orderBy) {
             return '';
@@ -144,13 +144,13 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for the group by and having clause.
+     * Generates the SQL for the group by and having clauses.
      * 
      * @param array $groupBy
      * @param array $having
      * @return string
      */
-    protected function getSQLForGroupByClause(array $groupBy, array $having): string
+    protected function getSQLForGroupBy(array $groupBy, array $having): string
     {
         if (!$groupBy) {
             return '';
@@ -166,13 +166,13 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for the limit and offset clause.
+     * Generates the SQL for the limit and offset clauses.
      * 
      * @param int|null $limit
      * @param int      $offset
      * @return string
      */
-    protected function getSQLForLimitClause(?int $limit, int $offset): string
+    protected function getSQLForLimit(?int $limit, int $offset): string
     {
         $sql = [];
 
@@ -188,7 +188,7 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for an insert query.
+     * Generates the SQL for an insert statement.
      * 
      * @param QueryBuilder $query
      * @return string
@@ -197,10 +197,8 @@ class QueryCompiler
     {
         $sql[] = 'INSERT INTO '.$query->getFrom();
 
-        $values = $query->getValues();
-
-        if ($values) {
-            $sql[] = $this->getSQLForColumns($query->getColumns());
+        if ($values = $query->getValues()) {
+            $sql[] = $this->getSQLForColumnList($query->getColumns());
             $sql[] = $values instanceof QueryBuilder ? $values : $this->getSQLForValues($values);
         }
 
@@ -208,18 +206,18 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for the columns of an insert query.
+     * Generates the SQL for the column list of an insert statement.
      * 
      * @param array $columns
      * @return string
      */
-    protected function getSQLForColumns(array $columns)
+    protected function getSQLForColumnList(array $columns)
     {
         return $columns ? '('.join(',', $columns).')' : '';
     }
 
     /**
-     * Generates the SQL for the values clause of an insert query.
+     * Generates the SQL for the values clause of an insert statement.
      * 
      * @param array $values
      * @return string
@@ -230,39 +228,39 @@ class QueryCompiler
     }
 
     /**
-     * Generates the SQL for an update query.
+     * Generates the SQL for an update statement.
      * 
      * @param QueryBuilder $query
      * @return string
      */
     protected function getSQLForUpdate(QueryBuilder $query): string
     {
-        return trim(sprintf('%s UPDATE %s SET %s %s',
-            $this->getSQLForWithClause($query->getWith()),
+        return trim(sprintf('%s UPDATE %s %s %s',
+            $this->getSQLForWith($query->getWith()),
             $query->getFrom(),
-            $this->getSQLForSetClause($query->getValues()),
-            $this->getSQLForWhereClause($query->getWhere())
+            $this->getSQLForSet($query->getValues()),
+            $this->getSQLForWhere($query->getWhere())
         ));
     }
 
     /**
-     * Generates the SQL for a set clause of an update query.
+     * Generates the SQL for the set clause of an update statement.
      * 
      * @param array $values
      * @return string
      */
-    protected function getSQLForSetClause(array $values): string
+    protected function getSQLForSet(array $values): string
     {
         $set = [];
         foreach ($values as $column => $value) {
             $set[] = $column.'='.$value;
         }
 
-        return join(',', $set);
+        return 'SET '.join(',', $set);
     }
 
     /**
-     * Generates the SQL for a delete query.
+     * Generates the SQL for a delete statement.
      * 
      * @param QueryBuilder $query
      * @return string
@@ -270,19 +268,19 @@ class QueryCompiler
     protected function getSQLForDelete(QueryBuilder $query): string
     {
         return trim(sprintf('%s DELETE FROM %s %s',
-            $this->getSQLForWithClause($query->getWith()),
+            $this->getSQLForWith($query->getWith()),
             $query->getFrom(),
-            $this->getSQLForWhereClause($query->getWhere())
+            $this->getSQLForWhere($query->getWhere())
         ));
     }
 
-        /**
+    /**
      * Generates the SQL for a with clause.
      * 
      * @param array $withs
      * @return string
      */
-    protected function getSQLForWithClause(array $with): string
+    protected function getSQLForWith(array $with): string
     {
         if (!$with) {
             return '';

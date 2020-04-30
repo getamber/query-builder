@@ -30,7 +30,7 @@ class QueryBuilder
     protected $select   = [];
     protected $distinct = false;
     protected $from     = null;
-    protected $join     = [];
+    protected $joins    = [];
     protected $where    = [];
     protected $orderBy  = [];
     protected $groupBy  = [];
@@ -49,6 +49,22 @@ class QueryBuilder
     public function __construct(QueryCompiler $compiler = null) 
     {
         $this->compiler = $compiler ?? new QueryCompiler();
+    }
+
+    /**
+     * Create a new QueryBuilder from a closure
+     * 
+     * @param Closure $closure
+     * @param bool    $subquery
+     * @return self
+     */
+    protected function newFromClosure(Closure $closure, $subquery = false): self
+    {
+        $query = new static($this->compiler);
+        $query->subquery = $subquery;
+        $query->alias = $closure($query);
+
+        return $query;
     }
 
     /**
@@ -87,14 +103,14 @@ class QueryBuilder
      * @param mixed $columns
      * @return self
      */
-    public function select($columns): self
+    public function select($columns = '*'): self
     {
         $this->select = [];
         return $this->addSelect(func_get_args());
     }
 
     /**
-     * Adds extra columns to a select query.
+     * Adds columns to a select query.
      * 
      * @param mixed $columns
      * @return self
@@ -250,9 +266,9 @@ class QueryBuilder
      * 
      * @return array[]
      */
-    public function getJoin(): array
+    public function getJoins(): array
     {
-        return $this->join;
+        return $this->joins;
     }
 
     /**
@@ -695,22 +711,6 @@ class QueryBuilder
     public function getWith(): array
     {
         return $this->with;
-    }
-
-    /**
-     * Create a new QueryBuilder from a closure
-     * 
-     * @param Closure $closure
-     * @param bool    $subquery
-     * @return self
-     */
-    protected function newFromClosure(Closure $closure, $subquery = false): self
-    {
-        $query = new static($this->compiler);
-        $query->subquery = $subquery;
-        $query->alias = $closure($query);
-
-        return $query;
     }
 
     /**
