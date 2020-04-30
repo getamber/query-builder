@@ -42,9 +42,9 @@ class QueryCompiler
      * @param QueryBuilder $query
      * @return string
      */
-    protected function getSQLForSelect(QueryBuilder $query): string
+    public function getSQLForSelect(QueryBuilder $query): string
     {
-        $sql = [$this->getSQLForWith($query->getWith()), 'SELECT'];
+        $sql = [$this->getSQLForWiths($query->getWiths()), 'SELECT'];
 
         if ($query->isDistinct()) {
             $sql[] = 'DISTINCT';
@@ -78,7 +78,7 @@ class QueryCompiler
      * @param array $joins
      * @return string
      */
-    protected function getSQLForJoins(array $joins): string
+    public function getSQLForJoins(array $joins): string
     {
         return join(' ', array_map(function ($join) {
             return $this->getSQLForJoin(...$join);
@@ -88,12 +88,12 @@ class QueryCompiler
     /**
      * Generates the SQL for a single join clause.
      * 
-     * @param string $join
-     * @param string $table
-     * @param string $on
+     * @param string      $join
+     * @param string      $table
+     * @param string|null $on
      * @return string
      */
-    protected function getSQLForJoin(string $join, string $table, string $on): string
+    public function getSQLForJoin(string $join, string $table, $on): string
     {
         return $join.' '.$table.($on ? ' ON '.$on : '');
     }
@@ -104,7 +104,7 @@ class QueryCompiler
      * @param array $where
      * @return string
      */
-    protected function getSQLForWhere(array $where): string
+    public function getSQLForWhere(array $where): string
     {
         if (!$where) {
             return '';
@@ -119,11 +119,9 @@ class QueryCompiler
      * @param array $conditions
      * @return string
      */
-    protected function getSQLForConditions(array $conditions): string
+    public function getSQLForConditions(array $conditions): string
     {
-        return join(' ', array_map(function ($parts) {
-            return join(' ', $parts);
-        }, $conditions));
+        return join(' ', $conditions);
     }
 
     /**
@@ -132,7 +130,7 @@ class QueryCompiler
      * @param array $orderBy
      * @return string
      */
-    protected function getSQLForOrderBy(array $orderBy): string
+    public function getSQLForOrderBy(array $orderBy): string
     {
         if (!$orderBy) {
             return '';
@@ -150,7 +148,7 @@ class QueryCompiler
      * @param array $having
      * @return string
      */
-    protected function getSQLForGroupBy(array $groupBy, array $having): string
+    public function getSQLForGroupBy(array $groupBy, array $having): string
     {
         if (!$groupBy) {
             return '';
@@ -172,7 +170,7 @@ class QueryCompiler
      * @param int      $offset
      * @return string
      */
-    protected function getSQLForLimit(?int $limit, int $offset): string
+    public function getSQLForLimit(?int $limit, int $offset): string
     {
         $sql = [];
 
@@ -193,13 +191,13 @@ class QueryCompiler
      * @param QueryBuilder $query
      * @return string
      */
-    protected function getSQLForInsert(QueryBuilder $query): string
+    public function getSQLForInsert(QueryBuilder $query): string
     {
         $sql[] = 'INSERT INTO '.$query->getFrom();
 
         if ($values = $query->getValues()) {
-            $sql[] = $this->getSQLForColumnList($query->getColumns());
-            $sql[] = $values instanceof QueryBuilder ? $values : $this->getSQLForValues($values);
+            $sql[] = $this->getSQLForColumns($query->getColumns());
+            $sql[] = $this->getSQLForValues($values);
         }
 
         return join(' ', array_filter($sql));
@@ -211,7 +209,7 @@ class QueryCompiler
      * @param array $columns
      * @return string
      */
-    protected function getSQLForColumnList(array $columns)
+    public function getSQLForColumns(array $columns)
     {
         return $columns ? '('.join(',', $columns).')' : '';
     }
@@ -222,7 +220,7 @@ class QueryCompiler
      * @param array $values
      * @return string
      */
-    protected function getSQLForValues(array $values)
+    public function getSQLForValues(array $values)
     {
         return 'VALUES ('.join(',', $values).')';
     }
@@ -233,10 +231,10 @@ class QueryCompiler
      * @param QueryBuilder $query
      * @return string
      */
-    protected function getSQLForUpdate(QueryBuilder $query): string
+    public function getSQLForUpdate(QueryBuilder $query): string
     {
         return trim(sprintf('%s UPDATE %s %s %s',
-            $this->getSQLForWith($query->getWith()),
+            $this->getSQLForWiths($query->getWiths()),
             $query->getFrom(),
             $this->getSQLForSet($query->getValues()),
             $this->getSQLForWhere($query->getWhere())
@@ -249,7 +247,7 @@ class QueryCompiler
      * @param array $values
      * @return string
      */
-    protected function getSQLForSet(array $values): string
+    public function getSQLForSet(array $values): string
     {
         $set = [];
         foreach ($values as $column => $value) {
@@ -265,10 +263,10 @@ class QueryCompiler
      * @param QueryBuilder $query
      * @return string
      */
-    protected function getSQLForDelete(QueryBuilder $query): string
+    public function getSQLForDelete(QueryBuilder $query): string
     {
         return trim(sprintf('%s DELETE FROM %s %s',
-            $this->getSQLForWith($query->getWith()),
+            $this->getSQLForWiths($query->getWiths()),
             $query->getFrom(),
             $this->getSQLForWhere($query->getWhere())
         ));
@@ -280,21 +278,29 @@ class QueryCompiler
      * @param array $withs
      * @return string
      */
-    protected function getSQLForWith(array $with): string
+    public function getSQLForWiths(array $withs): string
     {
-        if (!$with) {
+        if (!$withs) {
             return '';
         }
 
         $sql = [];
-        foreach ($with as $name => list($query, $columns)) {
-            if ($columns) {
-                $sql[] = $name.' ('.join(',', $columns).') AS '.$query;
-            } else {
-                $sql[] = $name.' AS '.$query;
-            }
+        foreach ($withs as $alias => list($query, $columns)) {
+            $sql[] = $this->getSQLForWith($alias, $columns, $query);
         }
 
         return 'WITH '.join(',', $sql);
+    }
+
+    /**
+     * 
+     */
+    public function getSQLForWith($alias, $columns, $query)
+    {
+        if ($columns) {
+           return $alias.' ('.join(',', $columns).') AS '.$query;
+        } else {
+            return $alias.' AS '.$query;
+        }
     }
 }

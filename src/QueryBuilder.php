@@ -18,17 +18,18 @@ class QueryBuilder
     const UPDATE = 'UPDATE';
     const DELETE = 'DELETE';
 
+    const JOIN_INNER = 'INNER JOIN';
+    const JOIN_LEFT  = 'LEFT JOIN';
+    const JOIN_RIGHT = 'RIGHT JOIN';
+    const JOIN_CROSS = 'CROSS JOIN';
+
     const SORT_ASC  = 'ASC';
     const SORT_DESC = 'DESC';
 
     protected $compiler;
 
     protected $type;
-    protected $subquery = false;
-    protected $alias;
-
     protected $select   = [];
-    protected $distinct = false;
     protected $from     = null;
     protected $joins    = [];
     protected $where    = [];
@@ -37,9 +38,11 @@ class QueryBuilder
     protected $having   = [];
     protected $limit    = null;
     protected $offset   = 0;
+    protected $distinct = false;
+    protected $subquery = false;
     protected $columns  = [];
     protected $values   = [];
-    protected $with     = [];
+    protected $withs    = [];
 
     /**
      * Initialises a new QueryBuilder
@@ -58,7 +61,7 @@ class QueryBuilder
      * @param bool    $subquery
      * @return self
      */
-    protected function newFromClosure(Closure $closure, $subquery = false): self
+    protected function newFromClosure(Closure $closure, bool $subquery): self
     {
         $query = new static($this->compiler);
         $query->subquery = $subquery;
@@ -78,13 +81,24 @@ class QueryBuilder
     }
 
     /**
-     * Checks whether or not the query is a subquery.
+     * Sets the query as a subquery with optional alias.
+     * 
+     * @param string $alias
+     * @param return self
+     */
+    public function subquery($alias = null)
+    {
+        $this->subquery = $alias ?? true;
+    }
+
+    /**
+     * Checks whether or not this is a subquery.
      * 
      * @return bool
      */
     public function isSubquery(): bool
     {
-        return $this->subquery;
+        return $this->subquery != null;
     }
 
     /**
@@ -94,25 +108,47 @@ class QueryBuilder
      */
     public function getAlias(): ?string
     {
-        return $this->alias;
+        return is_string($this->subquery) ? $this->subquery : null;
     }
 
     /**
-     * Starts building a select query. This method replaces the existing select clause.
+     * Sets the query to return distinct rows.
+     * 
+     * @return self
+     */
+    public function distinct(): self
+    {
+        $this->distinct = true;
+        return $this;
+    }
+
+    /**
+     * Checks whether or not the query returns distinct rows.
+     * 
+     * @return bool
+     */
+    public function isDistinct(): bool
+    {
+        return $this->distinct;
+    }
+
+    /**
+     * Sets the columns for a select.
      * 
      * @param mixed $columns
      * @return self
      */
-    public function select($columns = '*'): self
+    public function select($columns): self
     {
-        $this->select = [];
-        return $this->addSelect(func_get_args());
+        $this->columns = [];
+        $this->addSelect(...func_get_args());
+        return $this;
     }
 
     /**
-     * Adds columns to a select query.
+     * Adds columns to a select.
      * 
-     * @param mixed $columns
+     * @param string|Closure $columns
      * @return self
      */
     public function addSelect($columns): self
@@ -128,7 +164,7 @@ class QueryBuilder
     }
 
     /**
-     * Gets the columns of a select query.
+     * Gets the selected columns.
      * 
      * @return array
      */
@@ -138,29 +174,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets whether or not a select query returns distinct rows.
-     * 
-     * @param bool $distinct
-     * @return self
-     */
-    public function distinct(bool $distinct = true): self
-    {
-        $this->distinct = $distinct;
-        return $this;
-    }
-
-    /**
-     * Checks whether or not a select query returns distinct rows.
-     * 
-     * @return bool
-     */
-    public function isDistinct(): bool
-    {
-        return $this->distinct;
-    }
-
-    /**
-     * Sets the from clause of a select query.
+     * Sets the from clause.
      * 
      * @param string|Closure $from
      * @return self
@@ -168,12 +182,11 @@ class QueryBuilder
     public function from($from): self
     {
         $this->from = $from instanceof Closure ? $this->newFromClosure($from, true) : $from;
-
         return $this;
     }
 
     /**
-     * Gets the from clause of a select query.
+     * Gets the from clause.
      * 
      * @return string
      */
@@ -185,86 +198,24 @@ class QueryBuilder
     /**
      * Adds a join clause.
      * 
-     * @param string         $join  The type of join.
+     * @param string         $type  The type of join.
      * @param string|Closure $table The table or subquery to join with.
      * @param string|Closure $on    The on condition of the join.
+     * @return self
      */
-    protected function addJoin(string $join, $table, $on = null)
+    public function join(string $type, $table, $on = null): self
     {
         $table = $table instanceof Closure ? $this->newFromClosure($table, true) : $table;
         $on = $on instanceof Closure ? $this->newFromClosure($on, true) : $on;
 
-        $this->join[] = [$join, $table, $on];
-    }
-
-    /**
-     * Adds an inner join.
-     * 
-     * @param string|Closure $table The table or subquery to join with. 
-     * @param string|Closure $on    The on condition of the join.
-     * @return self
-     */
-    public function join($table, $on): self
-    {
-        $this->innerJoin($table, $on);
+        $this->joins[] = [$type, $table, $on];
         return $this;
     }
 
     /**
-     * Adds an inner join.
+     * Gets the join clauses.
      * 
-     * @param string|Closure $table The table or subquery to join with. 
-     * @param string|Closure $on    The on condition of the join.
-     * @return self
-     */
-    public function innerJoin($table, $on): self
-    {
-        $this->addJoin('INNER JOIN', $table, $on);
-        return $this;
-    }
-
-    /**
-     * Adds a left join.
-     * 
-     * @param string|Closure $table The table or subquery to join with. 
-     * @param string|Closure $on    The on condition of the join.
-     * @return self
-     */
-    public function leftJoin($table, $on): self
-    {
-        $this->addJoin('LEFT JOIN', $table, $on);
-        return $this;
-    }
-
-    /**
-     * Adds a right join.
-     * 
-     * @param string|Closure $table The table or subquery to join with. 
-     * @param string|Closure $on    The on condition of the join.
-     * @return self
-     */
-    public function rightJoin($table, $on): self
-    {
-        $this->addJoin('RIGHT JOIN', $table, $on);
-        return $this;
-    }
-
-    /**
-     * Adds a cross join.
-     * 
-     * @param string|Closure $table The table or subquery to join with. 
-     * @return self
-     */
-    public function crossJoin($table): self
-    {
-        $this->addJoin('CROSS JOIN', $table);
-        return $this;
-    }
-
-    /**
-     * Gets the join clauses of a select query+.
-     * 
-     * @return array[]
+     * @return array
      */
     public function getJoins(): array
     {
@@ -272,111 +223,23 @@ class QueryBuilder
     }
 
     /**
-     * Adds a where clause to a query.
+     * Sets the where clause.
      * 
      * @param string|Closure $condition
-     */
-    protected function addWhere($condition)
-    {
-        $condition = array_map(function ($part) {
-            return $part instanceof Closure ? $this->newFromClosure($part, true) : $part;
-        }, func_get_args());
-        
-        $this->where[] = $condition;
-    }
-
-    /**
-     * Begins a where clause. This method replaces the existing where clause.
-     * 
-     * @param string|Closure $condition
-     * @return self
      */
     public function where($condition): self
     {
-        $this->where = [];
-        $this->addWhere(...func_get_args());
-        return $this;
-    }
-
-    public function whereNot($condition): self
-    {
-        $this->where = [];
-        $this->addWhere('NOT', ...func_get_args());
-        return $this;
-    }
-
-    public function andWhere($condition): self
-    {
-        $this->addWhere('AND', ...func_get_args());
-        return $this;
-    }
-
-    public function andWhereNot($condition): self
-    {
-        $this->addWhere('AND NOT', ...func_get_args());
-        return $this;
-    }
-
-    public function orWhere($condition): self
-    {
-        $this->addWhere('OR', ...func_get_args());
-        return $this;
-    }
-
-    public function orWhereNot($condition): self
-    {
-        $this->addWhere('OR NOT', ...func_get_args());
+        $this->where = array_map(function ($condition) {
+            return $condition instanceof Closure ? $this->newFromClosure($condition, true) : $condition;
+        }, func_get_args());
+        
         return $this;
     }
 
     /**
-     * Adds an exists condition to a where clause.
+     * Gets the where clause.
      * 
-     * @param Closure $subquery
-     * @return self
-     */
-    public function whereExists(Closure $subquery): self
-    {
-        $this->where = [];
-        $this->addWhere('EXISTS', $subquery);
-        return $this;
-    }
-
-    public function whereNotExists(Closure $subquery): self
-    {
-        $this->where = [];
-        $this->addWhere('NOT EXISTS', $subquery);
-        return $this;
-    }
-
-    public function andWhereExists(Closure $subquery): self
-    {
-        $this->addWhere('AND EXISTS', $subquery);
-        return $this;
-    }
-
-    public function andWhereNotExists(Closure $subquery): self
-    {
-        $this->addWhere('AND NOT EXISTS', $subquery);
-        return $this;
-    }
-
-    public function orWhereExists(Closure $subquery): self
-    {
-        $this->addWhere('OR EXISTS', $subquery);
-        return $this;
-    }
-
-    public function orWhereNotExists(Closure $builder)
-    {
-        $this->addWhere('OR NOT EXISTS', $builder);
-        return $this;
-    }
-
-    /**
-     * Gets the where clause for the query.
-     * 
-     * @return (string|QueryBuilder)[]
+     * @return array
      */
     public function getWhere(): array
     {
@@ -384,36 +247,37 @@ class QueryBuilder
     }
 
     /**
-     * Begins an order by clause for a select query. This method replaces the existing group by clause.
+     * Sets the order by clause.
      * 
-     * @param string $column
-     * @param string $sort
+     * @param string|array $column
+     * @param string       $sort
      * @return self
      */
-    public function orderBy(string $column, string $sort = self::SORT_ASC): self
+    public function orderBy($column, string $sort = self::SORT_ASC): self
     {
         $this->orderBy = [];
-        $this->addOrderBy($column, $sort);
+        $this->addOrderBy(...func_get_args());
         return $this;
     }
 
     /**
-     * Adds an order by clause to a select query.
-     * 
-     * @param string $column
-     * @param string $sort
-     * @return self
+     * Adds to the order by clause.
      */
-    public function addOrderBy(string $column, string $sort = self::SORT_ASC): self
+    public function addOrderBy($column, string $sort = self::SORT_ASC): self
     {
-        $this->orderBy[] = [$column, $sort];
+        $orderBy = is_array($column) ? $column : [$column => $sort];
+
+        foreach ($orderBy as $column => $sort) {
+            $this->orderBy[] = [$column, $sort];
+        }
+
         return $this;
     }
 
     /**
-     * Gets the order by clause for a select query.
+     * Gets the order by clause.
      * 
-     * @return array[]
+     * @return array
      */
     public function getOrderBy(): array
     {
@@ -421,34 +285,35 @@ class QueryBuilder
     }
 
     /**
-     * Begins a group by clause for a select query. This method replaces the existing group by clause.
+     * Sets the group by clause.
      * 
-     * @param string $column
+     * @param string|array $column
      * @return self
      */
-    public function groupBy(string $column): self
+    public function groupBy($column): self
     {
         $this->groupBy = [];
-        $this->addGroupBy($column, false);
-        return $this;
-    }
-    
-    /**
-     * Adds a column to the group by clause of a select query.
-     * 
-     * @param string $column
-     * @return self
-     */
-    public function addGroupBy(string $column): self
-    {
-        $this->groupBy[] = $column;
+        $this->addGroupBy(...func_get_args());
         return $this;
     }
 
     /**
-     * Gets the group by clause of a select query.
+     * Adds to the group by clause.
      * 
-     * @return string[]
+     * @param string|array $column
+     * @return self
+     */
+    public function addGroupBy($column): self
+    {
+        $groupBy = is_array($column) ? $column : [$column];
+        array_push($this->groupBy, ...$groupBy);
+        return $this;
+    }
+
+    /**
+     * Gets the group by clause.
+     * 
+     * @return array
      */
     public function getGroupBy(): array
     {
@@ -456,64 +321,23 @@ class QueryBuilder
     }
 
     /**
-     * Adds a having clause to a select query.
+     * Sets the having clause.
      * 
      * @param string|Closure $condition
      */
-    protected function addHaving($condition)
-    {
-        $condition = array_map(function ($part) {
-            return $part instanceof Closure ? $this->newFromClosure($part, true) : $part;
-        }, func_get_args());
-
-        array_push($this->having, ...func_get_args());
-    }
-
-    /**
-     * Begins a having clause for a select query. This method replaces the existing having clause.
-     */
     public function having($condition): self
     {
-        $this->having = [];
-        $this->addHaving(...func_get_args());
-        return $this;
-    }
+        $this->having = array_map(function ($condition) {
+            return $condition instanceof Closure ? $this->newFromClosure($condition, true) : $condition;
+        }, func_get_args());
 
-    public function notHaving($condition): self
-    {
-        $this->having = [];
-        $this->addHaving('NOT', ...func_get_args());
-        return $this;
-    }
-
-    public function andHaving($condition): self
-    {
-        $this->addHaving('AND', ...func_get_args());
-        return $this;
-    }
-
-    public function andNotHaving($condition): self
-    {
-        $this->addHaving('AND NOT', ...func_get_args());
-        return $this;
-    }
-
-    public function orHaving($condition): self
-    {
-        $this->addHaving('OR', ...func_get_args());
-        return $this;
-    }
-
-    public function orNotHaving($condition): self
-    {
-        $this->addHaving('OR NOT', ...func_get_args());
         return $this;
     }
 
     /**
-     * Gets the having clause of a select query.
+     * Gets the having clause.
      * 
-     * @return mixed[]
+     * @return array
      */
     public function getHaving(): array
     {
@@ -521,7 +345,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets the maximum number of records to be returned by a select query.
+     * Sets the maximum number of records returned for a select.
      * 
      * @param int|null $limit The maximum number of records or null for no limit.
      * @return self
@@ -543,7 +367,7 @@ class QueryBuilder
     }
 
     /**
-     * Sets the offset for a select query.
+     * Sets the offset for a select.
      * 
      * @param int $offset
      * @return self
@@ -555,7 +379,7 @@ class QueryBuilder
     }
 
     /**
-     * Gets the offset for a select query.
+     * Gets the offset for a select.
      * 
      * @return int
      */
@@ -565,7 +389,7 @@ class QueryBuilder
     }
 
     /**
-     * Starts building an insert query. This method resets or replaces the existing query.
+     * Sets the table for an insert.
      * 
      * @param string $table
      * @return self
@@ -578,7 +402,7 @@ class QueryBuilder
     }
 
     /**
-     * Starts building an update query. This method resets or replaces the existing values.
+     * Sets the table for an update.
      * 
      * @param string $table
      * @return self
@@ -591,7 +415,7 @@ class QueryBuilder
     }
 
     /**
-     * Starts building a delete query.
+     * Sets the table for a delete.
      * 
      * @param string $table
      * @return QueryBuilder
@@ -604,15 +428,14 @@ class QueryBuilder
     }
 
     /**
-     * Sets the columns for an insert query.
+     * Sets the columns for an insert.
      * 
      * @param array $columns
      * @return self
      */
     public function columns($columns): self
     {
-        $columns = is_array($columns) ? $columns : func_get_args();
-        $this->columns = $columns;
+        $this->columns = is_array($columns) ? $columns : func_get_args();
         return $this;
     }
 
@@ -633,24 +456,19 @@ class QueryBuilder
     }
 
     /**
-     * Sets multiple values for an insert query.
+     * Sets the values for an insert.
      * 
-     * @param array|Closure $values Key value pairs of columns and values.
+     * @param array $values Key value pairs of columns and values or a closure.
      * @return self
      */
     public function values($values): self
     {
-        if ($values instanceof Closure) {
-            $this->values = $this->newFromClosure($values);
-        } else {
-            $this->values = is_array($values) ? $values : func_get_args();
-        }
-
+        $this->values = is_array($values) ? $values : func_get_args();
         return $this;
     }
 
     /**
-     * Sets multiple values for an update query.
+     * Sets the values for an update.
      * 
      * @param array $values
      * @return self
@@ -660,27 +478,14 @@ class QueryBuilder
         $this->values = [];
 
         foreach ($values as $column => $value) {
-            $this->setValue($column, $value);
+            $this->values[$column] = $value;
         }
 
         return $this;
     }
 
     /**
-     * Sets an individual value for an update query.
-     * 
-     * @param string         $column
-     * @param string|Closure $value
-     * @return self
-     */
-    public function setValue(string $column, $value)
-    {
-        $this->values[$column] = $value instanceof Closure ? $this->newFromClosure($value, true) : $value;
-        return $this;
-    }
-
-    /**
-     * Gets the values for an update or an insert query.
+     * Gets the values for an update or an insert.
      * 
      * @return array|QueryBuilder
      */
@@ -690,7 +495,7 @@ class QueryBuilder
     }
 
     /**
-     * Adds a with clause to the query.
+     * Adds a with clause.
      * 
      * @param string  $name
      * @param Closure $query
@@ -699,18 +504,18 @@ class QueryBuilder
      */
     public function with(string $name, Closure $query, $columns = []): self
     {
-        $this->with[$name] = [$this->newFromClosure($query, true), $columns];
+        $this->withs[$name] = [$this->newFromClosure($query, true), $columns];
         return $this;
     }
 
     /**
-     * Gets the with clause of the query.
+     * Gets the with clauses of the query.
      * 
      * @return array
      */
-    public function getWith(): array
+    public function getWiths(): array
     {
-        return $this->with;
+        return $this->withs;
     }
 
     /**
